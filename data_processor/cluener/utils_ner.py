@@ -165,7 +165,8 @@ def get_entity_bio(seq,id2label):
                 chunks.append(chunk)
         elif tag.startswith('I-') and chunk[1] != -1:
             _type = tag.split('-')[1]
-            if _type == chunk[0]:
+
+         if _type == chunk[0]:
                 chunk[2] = indx
 
             if indx == len(seq) - 1:

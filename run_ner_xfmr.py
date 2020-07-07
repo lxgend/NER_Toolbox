@@ -1,9 +1,5 @@
 
-
-
 def load_and_cache_examples(args, task, tokenizer, data_type='train'):
-
-
 
     if args.local_rank not in [-1, 0] and not evaluate:
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache

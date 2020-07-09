@@ -1,8 +1,10 @@
 # coding=utf-8
-import os
 import logging
+import os
+
 import torch
 from transformers import AlbertForTokenClassification
+from transformers import BertForTokenClassification
 from transformers import BertTokenizer
 
 from data_processor.data_example import ner_data_processors
@@ -11,6 +13,16 @@ from model_pipeline import train
 
 '''pipeline'''
 logger = logging.getLogger(__name__)
+
+# 模型选择
+MODEL_CLASSES = {
+    ## bert ernie bert_wwm bert_wwwm_ext
+    'bert': (BertForTokenClassification, BertTokenizer),
+    'albert': (AlbertForTokenClassification, BertTokenizer),
+    # 'bert': (BertConfig, BertCrfForNer, CNerTokenizer),
+    # 'albert': (AlbertConfig, AlbertCrfForNer, CNerTokenizer)
+}
+
 
 def main(args):
     # 1. setup CUDA, GPU & distributed training
@@ -41,10 +53,12 @@ def main(args):
     if args.local_rank not in [-1, 0]:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 
+    model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+
     # PATH_MODEL_BERT = '/home/ubuntu/MyFiles/roberta_wwm_ext_zh_hit_pt'
     PATH_MODEL_BERT = '/Users/lixiang/Documents/nlp_data/pretrained_model/albert_zh_xxlarge_google_pt'
-    tokenizer = BertTokenizer.from_pretrained(PATH_MODEL_BERT)
-    model = AlbertForTokenClassification.from_pretrained(PATH_MODEL_BERT)
+    tokenizer = tokenizer_class.from_pretrained(PATH_MODEL_BERT)
+    model = model_class.from_pretrained(PATH_MODEL_BERT, num_labels=num_labels)
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
@@ -101,10 +115,5 @@ class Args(object):
 if __name__ == '__main__':
     # args = get_argparse().parse_args()
 
-    # args = {'task_name': 'cluener',
-    #         'local_rank': 0,
-    #         'do_train': 1}
-
     args = Args()
-
     main(args)

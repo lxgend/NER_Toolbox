@@ -14,13 +14,11 @@ logger = logging.getLogger(__name__)
 class InputFeatures(object):
     """A single set of features of data."""
 
-    def __init__(self, input_ids, input_mask, input_len, segment_ids, label_ids):
+    def __init__(self, input_ids, attention_mask, token_type_ids, label_ids):
         self.input_ids = input_ids
-        self.input_mask = input_mask
-        self.input_len = input_len
-        self.segment_ids = segment_ids
+        self.attention_mask = attention_mask
+        self.token_type_ids = token_type_ids
         self.label_ids = label_ids
-
 
 def convert_examples_to_features(
         examples,
@@ -75,11 +73,13 @@ def convert_examples_to_features(
         label_ids += [label_map['O']]
         segment_ids = [sequence_a_segment_id] * len(tokens)
 
-        # 补上 [CLS]
+        # 结尾补上 [CLS]
         if cls_token_at_end:
             tokens += [cls_token]
             label_ids += [label_map['O']]
             segment_ids += [cls_token_segment_id]
+
+        # 开头补上 [CLS]
         else:
             tokens = [cls_token] + tokens
             label_ids = [label_map['O']] + label_ids
@@ -117,13 +117,10 @@ def convert_examples_to_features(
             logger.info("label_ids: %s", " ".join([str(x) for x in label_ids]))
 
         features.append(InputFeatures(input_ids=input_ids,
-                                      input_mask=input_mask,
-                                      input_len=input_len,
-                                      segment_ids=segment_ids,
+                                      attention_mask=input_mask,
+                                      token_type_ids=segment_ids,
                                       label_ids=label_ids))
     return features
-
-
 
 
 # load features to tensordataset, save feature cache
@@ -194,8 +191,7 @@ def load_and_cache_examples(args, task, tokenizer, ner_data_processor, data_type
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
     all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
     all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
-    all_lens = torch.tensor([f.input_len for f in features], dtype=torch.long)
-    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_lens, all_label_ids)
+    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
     return dataset
 
 # DataLoader 的参数

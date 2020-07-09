@@ -1,24 +1,72 @@
 # coding=utf-8
-import os
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset,DistributedSampler
-from data_processor.dataset_utils import collate_fn
 import logging
+import os
+
+import torch
+from torch.optim import SGD
+from torch.utils.data import DataLoader
+from torch.utils.data import DistributedSampler
+from torch.utils.data import RandomSampler
+
 logger = logging.getLogger(__name__)
 
-def train(args, train_dataset, model, tokenizer):
 
+def train(args, train_dataset, model, tokenizer):
+    """Train the model on `steps` batches"""
+    logger.debug('start')
+
+    args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
+    train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
+    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+
+    # set model to training mode
+    model.train()
+    # scheduler.step()
+
+    lr = 0.0001
+    optimizer = SGD(model.parameters(), lr=lr, momentum=0.8)
+
+    for epoch in range(int(args.num_train_epochs)):
+        step = 0
+        for step, batch_data in enumerate(train_dataloader):
+
+            batch_data = tuple(t.to(args.device) for t in batch_data)
+            batch_input_ids, batch_input_mask, batch_segment_ids, batch_label_ids = batch_data
+
+            optimizer.zero_grad()
+
+            outputs = model(input_ids=batch_input_ids, attention_mask=batch_input_mask,
+                            token_type_ids=batch_segment_ids, labels=batch_label_ids)
+
+            loss, scores = outputs[:2]
+
+            loss.backward()
+            optimizer.step()
+            if step % 10 == 0:
+                print('epoch: {} | step: {} | loss: {}'.format(epoch, step, loss.item()))
+
+            model.zero_grad()
+
+    torch.save(model.state_dict(), 'cluener_fine_tuned.pt')
+
+
+def train2(args, train_dataset, model, tokenizer):
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
 
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
-    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size,
-                                  collate_fn=collate_fn)
+    # train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size,
+    #                               collate_fn=collate_fn)
+    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+
+    # 限定step
     if args.max_steps > 0:
         t_total = args.max_steps
         args.num_train_epochs = args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
+
+    # 计算step
     else:
         t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
+
     # Prepare optimizer and schedule (linear warmup and decay)
     no_decay = ["bias", "LayerNorm.weight"]
     bert_param_optimizer = list(model.bert.named_parameters())
@@ -154,16 +202,12 @@ def train(args, train_dataset, model, tokenizer):
             torch.cuda.empty_cache()
     return global_step, tr_loss / global_step
 
-
-
 def evaluate(args, model, tokenizer, prefix=""):
     pass
 
 
 def predict(args, model, tokenizer, prefix=""):
     pass
-
-
 
 
 if __name__ == '__main__':

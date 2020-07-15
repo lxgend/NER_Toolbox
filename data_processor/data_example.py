@@ -130,6 +130,7 @@ class CluenerProcessor(DataProcessor):
             text_a = line['words']
             # BIOS
             labels = line['labels']
+
             examples.append(InputExample(guid=guid, text_a=text_a, labels=labels))
         return examples
 
@@ -138,3 +139,78 @@ ner_data_processors = {
     'cluener': CluenerProcessor,
     'cner': 'pass'
 }
+
+
+def get_entity(seq, id2label):
+    chunks = []
+    chunk = [-1, -1, -1]  # type, start indx, end indx
+    for indx, tag in enumerate(seq):
+
+        # int id to label
+        if not isinstance(tag, str):
+            tag = id2label[tag]
+
+        if tag.startswith("B-") or (tag.startswith("I-") and chunk[1] == -1):
+            if chunk[2] != -1:
+                chunks.append(chunk)
+            chunk = [-1, -1, -1]  # 重新init
+            chunk[1] = indx  # start indx
+            chunk[0] = tag.split('-')[1]  # get tag type
+            chunk[2] = indx
+            if indx == len(seq) - 1:  # seq中最后一个char
+                chunks.append(chunk)
+        elif tag.startswith('I-') and chunk[1] != -1:
+            _type = tag.split('-')[1]  # get tag type
+            if _type == chunk[0]:
+                chunk[2] = indx  # update end indx
+
+            if indx == len(seq) - 1:
+                chunks.append(chunk)
+        else:
+            if chunk[2] != -1:
+                chunks.append(chunk)
+            chunk = [-1, -1, -1]
+    return chunks
+
+
+def get_entity_bio(seq, id2label):
+    """Gets entities from sequence.
+    note: BIO
+    Args:
+        seq (list): sequence of labels.
+    Returns:
+        list: list of (chunk_type, chunk_start, chunk_end).
+    Example:
+        seq = ['B-PER', 'I-PER', 'O', 'B-LOC']
+        get_entity_bio(seq)
+        #output
+        [['PER', 0,1], ['LOC', 3, 3]]
+    """
+    chunks = []
+    chunk = [-1, -1, -1]
+    for indx, tag in enumerate(seq):
+        if not isinstance(tag, str):
+            tag = id2label[tag]
+            print(indx)
+            print(tag)
+        if tag.startswith("B-"):
+            if chunk[2] != -1:
+                chunks.append(chunk)
+            chunk = [-1, -1, -1]
+            chunk[1] = indx
+            chunk[0] = tag.split('-')[1]
+            chunk[2] = indx
+            if indx == len(seq) - 1:
+                chunks.append(chunk)
+        elif tag.startswith('I-') and chunk[1] != -1:
+            _type = tag.split('-')[1]
+            if _type == chunk[0]:
+                chunk[2] = indx
+
+            if indx == len(seq) - 1:
+                chunks.append(chunk)
+        else:
+            if chunk[2] != -1:
+                chunks.append(chunk)
+            chunk = [-1, -1, -1]
+    return chunks

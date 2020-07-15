@@ -44,6 +44,8 @@ def convert_examples_to_features(
 
     # label to id
     label_map = {label: i for i, label in enumerate(label_list)}
+    print(label_map)
+    print(len(label_map))
 
     features = []
     for (ex_index, example) in enumerate(examples):
@@ -53,6 +55,7 @@ def convert_examples_to_features(
         # tokens = tokenizer.tokenize(example.text_a)
 
         tokens = example.text_a
+
         label_ids = [label_map[x] for x in example.labels]
         # Account for [CLS] and [SEP] with "- 2".
         special_tokens_count = 2
@@ -151,7 +154,6 @@ def load_and_cache_examples(args, task, tokenizer, ner_data_processor, data_type
 
     # 新构建dataset
     else:
-        print('hhh3333333333')
 
         logger.info("Creating features from dataset file at %s", args.data_dir)
         label_list = ner_data_processor.get_labels()
@@ -178,18 +180,18 @@ def load_and_cache_examples(args, task, tokenizer, ner_data_processor, data_type
                                                 )
 
         # 通常保存rank=0进程节点，-1是所有
-        if args.local_rank in [-1, 0]:
-            logger.info("Saving features into cached file %s", cached_features_file)
+        # if args.local_rank in [-1, 0]:
+        #     logger.info("Saving features into cached file %s", cached_features_file)
             # torch.save(features, cached_features_file)
 
     # 读取dataset cache 后同步
-    if args.local_rank == 0 and not data_type != 'dev':
-        torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
+    # if args.local_rank == 0 and not data_type != 'dev':
+    #     torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
     # Convert to Tensors and build TensorDataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-    all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
-    all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
+    all_input_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
+    all_segment_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
     all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
     dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
     return dataset

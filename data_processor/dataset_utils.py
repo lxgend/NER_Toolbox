@@ -20,6 +20,7 @@ class InputFeatures(object):
         self.token_type_ids = token_type_ids
         self.label_ids = label_ids
 
+
 def convert_examples_to_features(
         examples,
         label_list,
@@ -154,7 +155,6 @@ def load_and_cache_examples(args, task, tokenizer, ner_data_processor, data_type
 
     # 新构建dataset
     else:
-
         logger.info("Creating features from dataset file at %s", args.data_dir)
         label_list = ner_data_processor.get_labels()
         if data_type == 'train':
@@ -164,25 +164,26 @@ def load_and_cache_examples(args, task, tokenizer, ner_data_processor, data_type
         else:
             examples = ner_data_processor.get_test_examples()
 
-        features = convert_examples_to_features(examples=examples,
-                                                tokenizer=tokenizer,
-                                                label_list=label_list,
-                                                max_seq_length=args.train_max_seq_length if data_type == 'train' \
-                                                    else args.eval_max_seq_length,
-                                                cls_token_at_end=bool(args.model_type in ["xlnet"]),
-                                                pad_on_left=bool(args.model_type in ['xlnet']),
-                                                cls_token=tokenizer.cls_token,
-                                                cls_token_segment_id=2 if args.model_type in ["xlnet"] else 0,
-                                                sep_token=tokenizer.sep_token,
-                                                # pad on the left for xlnet
-                                                pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-                                                pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0,
-                                                )
+        features = convert_examples_to_features(
+            examples=examples,
+            tokenizer=tokenizer,
+            label_list=label_list,
+            max_seq_length=args.train_max_seq_length if data_type == 'train' \
+                else args.eval_max_seq_length,
+            cls_token_at_end=bool(args.model_type in ["xlnet"]),
+            pad_on_left=bool(args.model_type in ['xlnet']),
+            cls_token=tokenizer.cls_token,
+            cls_token_segment_id=2 if args.model_type in ["xlnet"] else 0,
+            sep_token=tokenizer.sep_token,
+            # pad on the left for xlnet
+            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
+            pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0,
+        )
 
         # 通常保存rank=0进程节点，-1是所有
         # if args.local_rank in [-1, 0]:
         #     logger.info("Saving features into cached file %s", cached_features_file)
-            # torch.save(features, cached_features_file)
+        # torch.save(features, cached_features_file)
 
     # 读取dataset cache 后同步
     # if args.local_rank == 0 and not data_type != 'dev':
@@ -190,11 +191,12 @@ def load_and_cache_examples(args, task, tokenizer, ner_data_processor, data_type
 
     # Convert to Tensors and build TensorDataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-    all_input_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
+    all_input_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.uint8)
     all_segment_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
     all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
     dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
     return dataset
+
 
 # DataLoader 的参数
 def collate_fn(batch):

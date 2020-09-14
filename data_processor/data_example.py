@@ -1,5 +1,5 @@
 # coding=utf-8
-'''raw data to three List[InputExample]'''
+'''raw data on disk to three List[InputExample]'''
 
 import csv
 import json
@@ -102,7 +102,11 @@ class CluenerProcessor(DataProcessor):
 
     def get_train_examples(self) -> List[InputExample]:
         """See base class."""
-        return self._create_examples(self._read_json(os.path.join(self.data_dir, "train.json")), "train")
+        result = self._create_examples(self._read_json(os.path.join(self.data_dir, "train.json")), "train")
+
+        result = result[:32]
+
+        return result
 
     def get_dev_examples(self):
         """See base class."""

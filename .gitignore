@@ -144,3 +144,4 @@ data/
 huggingface_xfmr/
 old/
 *.pt
+*.json

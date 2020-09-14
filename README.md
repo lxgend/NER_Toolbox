@@ -7,11 +7,12 @@
 
 ## Todo
 - [x] BERT 
+- [x] BERT-CRF
+- [ ] BiLSTM-CRF
+- [ ] BERT-BiLSTM-CRF
+- [ ] BERT-MRC
 - [ ] CRF
 - [ ] HMM
-- [ ] BERT-CRF
-- [ ] BERT-MRC
-- [ ] BiLSTM-CRF
 - [ ] ...
 
 ## Reference

@@ -27,7 +27,7 @@ MODEL_CLASSES = {
     # 'albert': (AlbertConfig, AlbertCrfForNer, CNerTokenizer)
 }
 
-def train(args, train_dataset, model, tokenizer):
+def train(args, train_dataset, model):
     """Train the model on `steps` batches"""
     logger.debug('start')
 
@@ -74,7 +74,7 @@ def train(args, train_dataset, model, tokenizer):
     return global_step
 
 
-def evaluate(args, eval_dataset, model, tokenizer, prefix=""):
+def evaluate(args, eval_dataset, model):
     eval_sampler = SequentialSampler(eval_dataset)
     eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
@@ -108,7 +108,7 @@ def evaluate(args, eval_dataset, model, tokenizer, prefix=""):
     print(classification_report(pred_labels, true_labels, labels=tags))
 
 
-def predict(args, test_dataset, model, tokenizer, prefix=""):
+def predict(args, test_dataset, model):
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = DataLoader(test_dataset, sampler=test_sampler, batch_size=1)
 
@@ -190,6 +190,8 @@ def main(args):
     tokenizer = tokenizer_class.from_pretrained(PATH_MODEL_BERT)
     model = model_class.from_pretrained(PATH_MODEL_BERT, num_labels=num_labels)
 
+    print(model)
+
     # if args.local_rank == 0:
     #     torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
     model.to(args.device)
@@ -207,7 +209,7 @@ def main(args):
 
         # train
         # logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
-        global_step = train(args, train_dataset, model, tokenizer)
+        global_step = train(args, train_dataset, model)
         print("global_step = %s" % global_step)
 
     # Evaluation
@@ -219,7 +221,7 @@ def main(args):
 
         model.load_state_dict(torch.load('cluener_fine_tuned.pt', map_location=lambda storage, loc: storage))
         model.to(args.device)
-        evaluate(args, eval_dataset, model, tokenizer)
+        evaluate(args, eval_dataset, model)
 
     if args.do_test:
         print('test')
@@ -227,7 +229,7 @@ def main(args):
 
         model.load_state_dict(torch.load('cluener_fine_tuned.pt', map_location=lambda storage, loc: storage))
         model.to(args.device)
-        predict(args, test_dataset, model, tokenizer)
+        predict(args, test_dataset, model)
 
         # preds = tags[0][1:-1]  # [CLS]XXXX[SEP]
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()

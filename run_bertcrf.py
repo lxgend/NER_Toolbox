@@ -189,7 +189,7 @@ class Args(object):
         self.bert_lr = 0.0001
         self.crf_lr = self.bert_lr * 100
 
-        self.do_train = 0
+        self.do_train = 1
         self.per_gpu_train_batch_size = 16
         self.num_train_epochs = 3
         self.max_steps = -1
@@ -207,3 +207,4 @@ if __name__ == '__main__':
 
     args = Args()
     main(args)
+

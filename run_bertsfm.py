@@ -62,6 +62,8 @@ def train(args, train_dataset, model):
 
             loss, scores = outputs[:2]
 
+            print(loss)
+
             loss.backward()
             optimizer.step()
             if step % 5 == 0:
@@ -231,7 +233,6 @@ def main(args):
         model.to(args.device)
         predict(args, test_dataset, model)
 
-        # preds = tags[0][1:-1]  # [CLS]XXXX[SEP]
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
     # if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
     #     # Create output directory if needed
@@ -324,13 +325,13 @@ class Args(object):
         self.eval_max_seq_length = 55
         self.model_type = 'bert'
 
-        self.do_train = 0
+        self.do_train = 1
         self.per_gpu_train_batch_size = 16
         self.num_train_epochs = 3
         self.max_steps = -1
         self.gradient_accumulation_steps = 1
 
-        self.do_eval = 1
+        self.do_eval = 0
         self.eval_batch_size = 16
 
         self.do_test = 0

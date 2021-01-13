@@ -1,9 +1,11 @@
 # coding=utf-8
 import torch
 import torch.nn as nn
+from torch.nn import LayerNorm
 from torchcrf import CRF
 
 torch.manual_seed(123)  # 保证每次运行初始化的随机数相同
+
 
 class BiRNN(nn.Module):
     def __init__(self, config):
@@ -34,6 +36,7 @@ class BiRNN(nn.Module):
 
         # self.act_func = nn.Softmax(dim=1)
         self.dropout = nn.Dropout(config.dropout)
+        self.layer_norm = LayerNorm(config.hidden_dim * config.num_directions)
 
         # self.vocab_size = config.vocab_size
         # self.batch_size = config.batch_size
@@ -49,89 +52,39 @@ class BiRNN(nn.Module):
         c0 = torch.randn(self.num_rnn_layers * self.num_directions, batch_size, self.hidden_dim)
         return h0, c0
 
-    def forward4(self, sentence):
-        # sentence.shape: torch.Size([16, 42]), 分别是: batch大小，seq长度
-        # 由于数据集不一定是预先设置的batch_size的整数倍，所以用size(1)获取当前数据实际的batch
-        batch_size = sentence.size(0)
-        seq_length = sentence.size(1)
-
-        embeds = self.embedding(sentence)
-
-        x = embeds.view(len(sentence), self.batch_size, -1)
-        lstm_out, self.hidden = self.lstm(x, self.hidden)
-        y = self.hidden2label(lstm_out[-1])
-
-        # lstm最初的前项输出
-        h0, c0 = self.init_hidden(batch_size)
-
-        # input [batch_size, seq_len, embeding]=[128, 32, 300]
-        # out[seq_len, batch_size, num_directions * hidden_size]。多层lstm，out只保存最后一层每个时间步t的输出h_t
-        # h_n, c_n [num_layers * num_directions, batch_size, hidden_size]
-        out, (h_n, c_n) = self.lstm(sentence, (h0, c0))
-
-        x = self.liner(x)
-        x = self.act_func(x)
-
-        return x
-
-    def forward3(self, sentence):
-        embeds = self.word_embeddings(sentence)
-        x = embeds.view(len(sentence), self.batch_size, -1)
-        lstm_out, self.hidden = self.lstm(x, self.hidden)
-        y = self.hidden2label(lstm_out[-1])
-        return y
-
-    def forward2(self, inputs_ids, input_mask):
-        embs = self.embedding(inputs_ids)
-        embs = self.dropout(embs)
-        embs = embs * input_mask.float().unsqueeze(2)
-        seqence_output, _ = self.bilstm(embs)
-        seqence_output = self.layer_norm(seqence_output)
-        features = self.classifier(seqence_output)
-        return features
-
     def forward(self, inputs_ids, input_mask):
         # x shape:
         # [batch_size, padded sentence_length]  ids
         # [batch_size, padded sentence_length, embedding_size]   pretrain emb
 
-        batch_size = inputs_ids.size(0)                  # 获取当前数据实际的batch
+        batch_size = inputs_ids.size(0)  # 获取当前数据实际的batch
         # h0, c0 = self.init_hidden(batch_size)   # 初始化 lstm最初的前项输出
 
         if self.embedding_pretrained is not None:
             pass
         else:
             embeds = self.embedding(inputs_ids)
-            embeds = embeds * input_mask.float().unsqueeze(2)
+            embeds = self.dropout(embeds)
+            embeds = embeds * input_mask.float().unsqueeze(2)  # padded对应的embed 置0
 
         # out [batch_size, seq_len, num_directions * hidden_size]。多层lstm，out只保存最后一层每个时间步t的输出h_t
         # hn, cn shape: 同 h0, c0
         # out, (hn, cn) = self.lstm(embs, (h0, c0))
         lstm_out, (hn, cn) = self.lstm(embeds)
+        # lstm_out = self.layer_norm(lstm_out)
 
-        lstm_out = self.hidden2tag(lstm_out)
-
-        print(lstm_out.shape)
-
-        return lstm_out
-
-        # x = h_n  # [num_layers*num_directions, batch_size, hidden_size]
-        # x = x.permute(1, 0, 2)  # [batch_size, num_layers*num_directions, hidden_size]
-        # x = x.contiguous().view(batch_size,
-        # self.num_layers * self.num_directions * self.hidden_size)  # [batch_size, num_layers*num_directions*hidden_size]
-        # x = self.liner(x)
-        # x = self.act_func(x)
-        # return x
+        lstm_feats = self.hidden2tag(lstm_out)
+        return lstm_feats
 
     def _get_lstm_features(self, sentence):
         self.hidden = self.init_hidden()
-
         # max_len, batchsize, -1
         embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)
         lstm_feats = self.hidden2tag(lstm_out)
         return lstm_feats
+
 
 class BiRNN_CRF(nn.Module):
     def __init__(self, config):
@@ -141,21 +94,19 @@ class BiRNN_CRF(nn.Module):
         self.transitions = nn.Parameter(torch.randn(config.num_classes, config.num_classes))
         self.crf = CRF(config.num_classes, batch_first=True)
 
-    def forward(self, x, mask, y):  # for training
-        mask = xw.data.gt(0).float()
-        h = self.rnn(xc, xw, mask)
-        Z = self.crf.forward(h, mask)
-        score = self.crf.score(h, y, mask)
-        return Z - score  # NLL loss
+    def forward(self, input_ids, input_mask, label_ids):  # for training
+        # mask = xw.data.gt(0).float()
+        lstm_feats = self.birnn(input_ids, input_mask)
 
-    def decode(self, xc, xw):  # for prediction
-        mask = xw.data.gt(0).float()
-        h = self.rnn(xc, xw, mask)
-        return self.crf.decode(h, mask)
+        log_likelihood = self.crf(emissions=lstm_feats, tags=label_ids, mask=input_mask)
 
+        # NLL loss
+        return (-1) * log_likelihood
 
-
-
+    def predict(self, input_ids, input_mask):
+        lstm_feats = self.birnn(input_ids, input_mask)
+        preds = self.crf.decode(emissions=lstm_feats, mask=input_mask)
+        return preds
 
 class Config(object):
     def __init__(self):
@@ -178,7 +129,6 @@ class Config(object):
 
 
 if __name__ == '__main__':
-
 
     # "[START]", "[END]"
     START_TAG = '<START>'

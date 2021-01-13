@@ -4,14 +4,17 @@ import os
 
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.data import RandomSampler, DistributedSampler
-from torch.utils.data import SequentialSampler
+from torch.utils.data import DistributedSampler
+from torch.utils.data import RandomSampler
+from torch.optim import SGD
 from transformers import BertTokenizer
 
 from data_processor.data_example import ner_data_processors
 from data_processor.dataset_utils import load_and_cache_examples
+
 logger = logging.getLogger(__name__)
-from nets.birnn import BiRNN
+from nets.birnn import BiRNN_CRF
+
 
 class Args(object):
     def __init__(self):
@@ -20,7 +23,6 @@ class Args(object):
         self.overwrite_cache = 1
         self.local_rank = -1
         self.n_gpu = torch.cuda.device_count()
-
 
         self.train_max_seq_length = 55
         self.eval_max_seq_length = 55
@@ -57,6 +59,7 @@ class RNN_config(object):
         self.epochs = 10
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def train(args, train_dataset, model):
     """Train the model on `steps` batches"""
     logger.debug('start')
@@ -67,12 +70,26 @@ def train(args, train_dataset, model):
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
+    optimizer = SGD(model.parameters(), lr=0.0001, momentum=0.8)
+
+    global_step = 0
     for epoch in range(int(args.num_train_epochs)):
         for step, batch_data in enumerate(train_dataloader):
             batch_data = tuple(t.to(args.device) for t in batch_data)
             batch_input_ids, batch_input_mask, batch_segment_ids, batch_label_ids = batch_data
 
-            model(batch_input_ids, batch_input_mask)
+            loss = model(batch_input_ids, batch_input_mask, batch_label_ids)
+
+            loss.backward()
+            optimizer.step()
+            if step % 5 == 0:
+                print('epoch: {} | step: {} | loss: {}'.format(epoch, step, loss.item()))
+
+            global_step += 1
+
+    torch.save(model.state_dict(), 'cluener_fine_tuned_lstmcrf.pt')
+
+    return global_step
 
 
 def main(args):
@@ -84,7 +101,6 @@ def main(args):
     data_dir = args.data_dir
     task_name = args.task_name
     ner_data_processor = ner_data_processors[task_name](data_dir)
-
 
     label_list = ner_data_processor.get_labels()
     label2id = {label: i for i, label in enumerate(label_list)}
@@ -103,7 +119,7 @@ def main(args):
     vocab = tokenizer.get_vocab()
 
     config = RNN_config(embedding_dim=100, vocab_size=vocab_size, num_classes=num_labels)
-    model = BiRNN(config=config)
+    model = BiRNN_CRF(config=config)
     model.to(args.device)
     print(model)
 

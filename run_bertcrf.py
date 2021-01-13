@@ -9,21 +9,13 @@ from torch.utils.data import DataLoader
 from torch.utils.data import RandomSampler
 from torch.utils.data import SequentialSampler
 from tqdm import tqdm
-from transformers import AlbertForTokenClassification
-from transformers import BertForTokenClassification
-from transformers import BertTokenizer
 
 from data_processor.data_example import ner_data_processors
 from data_processor.dataset_utils import load_and_cache_examples
 from nets.bert_crf import Bert_CRF
+from nets.plm import MODEL_CLASSES
 
 logger = logging.getLogger(__name__)
-
-MODEL_CLASSES = {
-    ## bert ernie bert_wwm bert_wwwm_ext
-    'bert': (BertForTokenClassification, BertTokenizer),
-    'albert': (AlbertForTokenClassification, BertTokenizer),
-}
 
 
 def main(args):
@@ -41,11 +33,10 @@ def main(args):
     num_labels = len(label_list)
     print("num_labels: %d" % num_labels)
 
-    model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    model_class, tokenizer_class, model_path = MODEL_CLASSES[args.model_type]
 
-    PATH_MODEL_BERT = '/Users/lixiang/Documents/nlp_data/pretrained_model/roberta_wwm_ext_zh_hit_pt'
-    tokenizer = tokenizer_class.from_pretrained(PATH_MODEL_BERT)
-    model = Bert_CRF(path=PATH_MODEL_BERT, num_tag=num_labels)
+    tokenizer = tokenizer_class.from_pretrained(model_path)
+    model = Bert_CRF(path=model_path, num_tag=num_labels)
 
     # for name, param in model.crf.named_parameters():
     #     if param.requires_grad:
@@ -207,4 +198,3 @@ if __name__ == '__main__':
 
     args = Args()
     main(args)
-

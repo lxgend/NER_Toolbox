@@ -3,12 +3,13 @@
 | MODEL            | Task    |    F1    |
 | ---------------- | ------- |--------- |
 | **RoBERTa-wwm**  | CLUENER |   0.60   | 
+| **BiLSTM-CRF**   | CLUENER |   0.36   |
 
 
 ## Todo
 - [x] BERT 
 - [x] BERT-CRF
-- [ ] BiLSTM-CRF
+- [x] BiLSTM-CRF
 - [ ] BiGRU-CRF
 - [ ] BiLSTM-CNN-CRF
 - [ ] BERT-BiLSTM-CRF

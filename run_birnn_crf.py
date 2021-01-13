@@ -15,7 +15,7 @@ from data_processor.dataset_utils import load_and_cache_examples
 
 logger = logging.getLogger(__name__)
 from nets.birnn import BiRNN_CRF
-
+from nets.plm import MODEL_CLASSES
 
 class Args(object):
     def __init__(self):
@@ -140,9 +140,9 @@ def main(args):
     num_labels = len(label_list)
     print("num_labels: %d" % num_labels)
 
-    PATH_MODEL_BERT = '/Users/lixiang/Documents/nlp_data/pretrained_model/roberta_wwm_ext_zh_hit_pt'
-    tokenizer = BertTokenizer.from_pretrained(PATH_MODEL_BERT)
+    model_class, tokenizer_class, model_path = MODEL_CLASSES['bert']
 
+    tokenizer = tokenizer_class.from_pretrained(model_path)
     vocab_size = tokenizer.vocab_size
 
     print(label2id)

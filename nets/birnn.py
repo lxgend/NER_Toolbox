@@ -99,7 +99,6 @@ class BiRNN_CRF(nn.Module):
         lstm_feats = self.birnn(input_ids, input_mask)
 
         log_likelihood = self.crf(emissions=lstm_feats, tags=label_ids, mask=input_mask)
-
         # NLL loss
         return (-1) * log_likelihood
 

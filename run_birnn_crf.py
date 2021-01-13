@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import RandomSampler
+from torch.utils.data import SequentialSampler
 from torch.optim import SGD
 from transformers import BertTokenizer
 
@@ -34,7 +35,7 @@ class Args(object):
         self.max_steps = -1
         self.gradient_accumulation_steps = 1
 
-        self.do_eval = 0
+        self.do_eval = 1
         self.eval_batch_size = 16
 
         self.do_test = 0
@@ -58,7 +59,6 @@ class RNN_config(object):
         self.batch_size = 16
         self.epochs = 10
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 def train(args, train_dataset, model):
     """Train the model on `steps` batches"""
@@ -91,6 +91,38 @@ def train(args, train_dataset, model):
 
     return global_step
 
+def evaluate(args, eval_dataset, model):
+    from sklearn.metrics import classification_report
+    import numpy as np
+    from tqdm import tqdm
+
+
+    eval_sampler = SequentialSampler(eval_dataset)
+    eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
+
+    true_labels = np.array([])
+    pred_labels = np.array([])
+
+    with torch.no_grad():
+        for batch_data in tqdm(eval_dataloader, desc='dev'):
+            model.eval()
+
+            batch_data = tuple(t.to(args.device) for t in batch_data)
+            batch_input_ids, batch_input_mask, batch_segment_ids, batch_label_ids = batch_data
+
+            predictions = model.predict(batch_input_ids, batch_input_mask)
+
+            # padding
+            predictions = list(map(lambda x: x + [31] * (55 - len(x)), predictions))
+            predictions = np.array(predictions)
+
+            pred_labels = np.append(pred_labels, predictions)
+            true_labels = np.append(true_labels, batch_label_ids.detach().cpu().numpy())
+
+        # 查看各个类别的准召
+        tags = list(range(34))
+        print(classification_report(pred_labels, true_labels, labels=tags))
+
 
 def main(args):
     # 1. setup CUDA, GPU & distributed training
@@ -116,7 +148,7 @@ def main(args):
     print(label2id)
     print(vocab_size)
 
-    vocab = tokenizer.get_vocab()
+    # vocab = tokenizer.get_vocab()
 
     config = RNN_config(embedding_dim=100, vocab_size=vocab_size, num_classes=num_labels)
     model = BiRNN_CRF(config=config)
@@ -134,17 +166,13 @@ def main(args):
         # global_step = train(args, train_dataset, model)
         # print("global_step = %s" % global_step)
 
-    '''
-
     # Evaluation
     if args.do_eval:
         eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='dev')
 
-        model.load_state_dict(torch.load('cluener_fine_tuned.pt', map_location=lambda storage, loc: storage))
+        model.load_state_dict(torch.load('cluener_fine_tuned_lstmcrf.pt', map_location=lambda storage, loc: storage))
         model.to(args.device)
         evaluate(args, eval_dataset, model)
-        
-    '''
 
 
 if __name__ == '__main__':

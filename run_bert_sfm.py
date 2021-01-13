@@ -1,6 +1,7 @@
 # coding=utf-8
 import logging
 import os
+
 import numpy as np
 import torch
 from torch.optim import SGD
@@ -8,24 +9,14 @@ from torch.utils.data import DataLoader
 from torch.utils.data import RandomSampler
 from torch.utils.data import SequentialSampler
 from tqdm import tqdm
-from transformers import AlbertForTokenClassification
-from transformers import BertForTokenClassification
-from transformers import BertTokenizer
 
 from data_processor.data_example import ner_data_processors
 from data_processor.dataset_utils import load_and_cache_examples
+from nets.plm import MODEL_CLASSES
 
 '''pipeline'''
 logger = logging.getLogger(__name__)
 
-# 模型选择
-MODEL_CLASSES = {
-    ## bert ernie bert_wwm bert_wwwm_ext
-    'bert': (BertForTokenClassification, BertTokenizer),
-    'albert': (AlbertForTokenClassification, BertTokenizer),
-    # 'bert': (BertConfig, BertCrfForNer, CNerTokenizer),
-    # 'albert': (AlbertConfig, AlbertCrfForNer, CNerTokenizer)
-}
 
 def train(args, train_dataset, model):
     """Train the model on `steps` batches"""
@@ -62,7 +53,7 @@ def train(args, train_dataset, model):
 
             loss, scores = outputs[:2]
 
-            print(loss)
+            # print(loss)
 
             loss.backward()
             optimizer.step()
@@ -71,7 +62,7 @@ def train(args, train_dataset, model):
 
             global_step += 1
 
-    torch.save(model.state_dict(), 'cluener_fine_tuned.pt')
+    torch.save(model.state_dict(), args.modelfile_finetuned)
 
     return global_step
 
@@ -150,7 +141,6 @@ def predict(args, test_dataset, model):
             writer.write(json.dumps(d) + '\n')
 
 
-
 def main(args):
     # 1. setup CUDA, GPU & distributed training
     # cpu
@@ -185,12 +175,10 @@ def main(args):
     # if args.local_rank not in [-1, 0]:
     #     torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 
-    model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    model_class, tokenizer_class, model_path = MODEL_CLASSES[args.model_type]
 
-    # PATH_MODEL_BERT = '/home/ubuntu/MyFiles/roberta_wwm_ext_zh_hit_pt'
-    PATH_MODEL_BERT = '/Users/lixiang/Documents/nlp_data/pretrained_model/roberta_wwm_ext_zh_hit_pt'
-    tokenizer = tokenizer_class.from_pretrained(PATH_MODEL_BERT)
-    model = model_class.from_pretrained(PATH_MODEL_BERT, num_labels=num_labels)
+    tokenizer = tokenizer_class.from_pretrained(model_path)
+    model = model_class.from_pretrained(model_path, num_labels=num_labels)
 
     print(model)
 
@@ -221,7 +209,7 @@ def main(args):
 
         eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='dev')
 
-        model.load_state_dict(torch.load('cluener_fine_tuned.pt', map_location=lambda storage, loc: storage))
+        model.load_state_dict(torch.load(args.modelfile_finetuned, map_location=lambda storage, loc: storage))
         model.to(args.device)
         evaluate(args, eval_dataset, model)
 
@@ -229,7 +217,7 @@ def main(args):
         print('test')
         test_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='test')
 
-        model.load_state_dict(torch.load('cluener_fine_tuned.pt', map_location=lambda storage, loc: storage))
+        model.load_state_dict(torch.load(args.modelfile_finetuned, map_location=lambda storage, loc: storage))
         model.to(args.device)
         predict(args, test_dataset, model)
 
@@ -251,6 +239,8 @@ def main(args):
 
 
 import json
+
+
 def submit(args):
     if args.task_name == 'cluener':
 
@@ -319,6 +309,7 @@ class Args(object):
         self.task_name = 'cluener'
         self.data_dir = os.path.join(*[os.path.dirname(os.path.abspath(__file__)), 'data', 'cluener_public'])
         self.overwrite_cache = 1
+        self.modelfile_finetuned ='cluener_fine_tuned.pt'
         self.local_rank = 0
         self.n_gpu = torch.cuda.device_count()
         self.train_max_seq_length = 55
@@ -331,7 +322,7 @@ class Args(object):
         self.max_steps = -1
         self.gradient_accumulation_steps = 1
 
-        self.do_eval = 0
+        self.do_eval = 1
         self.eval_batch_size = 16
 
         self.do_test = 0

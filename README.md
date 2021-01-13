@@ -1,10 +1,12 @@
 # NER_ToolBox
 
-| MODEL            | Task    |    F1    |
-| ---------------- | ------- |--------- |
-| **RoBERTa-wwm**  | CLUENER |   0.60   | 
-| **BiLSTM-CRF**   | CLUENER |   0.36   |
+CLUENER
 
+| MODEL            | Text representation | F1 weighted avg |
+| ---------------- | ------------------  | --------------- |
+| **BERT**         | RoBERTa-wwm         |   0.73          | 
+| **BERT-CRF**     | RoBERTa-wwm         |   0.78          | 
+| **BiLSTM-CRF**   | random embedding    |   0.40          |
 
 ## Todo
 - [x] BERT 

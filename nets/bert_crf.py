@@ -27,7 +27,7 @@ class Bert_CRF(nn.Module):
 
 
         # torch.Size([batch_size, seq_len, 34])
-        print(logits)
+        # print(logits)
 
         log_likelihood = self.crf(emissions=logits, tags=labels, mask=attention_mask)
 

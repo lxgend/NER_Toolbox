@@ -21,10 +21,7 @@ CLUENER
 - [ ] ...
 
 ## Reference
-### data
-* [CLUENER 细粒度命名实体识别](https://github.com/CLUEbenchmark/CLUENER2020)
-
-
+  ### data
     10个标签类别，分别为:
     地址（address）: **省**市**区**街**号，**路，**街道，**村等（如单独出现也标记）。地址是标记尽量完全的, 标记到最细。 
     书名（book）: 小说，杂志，习题集，教科书，教辅，地图册，食谱，书店里能买到的一类书籍，包含电子书。
@@ -39,6 +36,9 @@ CLUENER
 
     训练集：10748
     验证集：1343
+
+* [CLUENER 细粒度命名实体识别](https://github.com/CLUEbenchmark/CLUENER2020)
+
 
 ### article
 * [你的CRF层的学习率可能不够大](https://kexue.fm/archives/7196)

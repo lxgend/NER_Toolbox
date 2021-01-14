@@ -1,6 +1,7 @@
 # coding=utf-8
 import torch
 import torch.nn as nn
+from torch.nn import Embedding
 from torch.nn import LayerNorm
 from torchcrf import CRF
 
@@ -8,23 +9,32 @@ torch.manual_seed(123)  # 保证每次运行初始化的随机数相同
 
 
 class BiRNN(nn.Module):
+    embedding: Embedding
+
     def __init__(self, config):
         super().__init__()
 
         self.device = config.device
 
-        if config.embedding_pretrained is not None:
-            # 特指plm
+        self.embedding_pretrained = config.embedding_pretrained
+        if config.embedding_pretrained == 'bert':
+            from transformers import BertModel
+            from nets.plm import PATH_BERT
+            self.bert_encoder = BertModel.from_pretrained(PATH_BERT)
+            self.embedding_dim = 768
+
+        elif config.embedding_pretrained == 'wv':
             self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
+            self.embedding_dim = config.embedding_dim
         else:
             self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=config.vocab_size - 1)
+            self.embedding_dim = config.embedding_dim
 
-        self.embedding_pretrained = config.embedding_pretrained
         self.hidden_dim = config.hidden_dim
         self.num_rnn_layers = config.num_rnn_layers
         self.num_directions = config.num_directions
 
-        self.lstm = nn.LSTM(input_size=config.embedding_dim,
+        self.lstm = nn.LSTM(input_size=self.embedding_dim,
                             hidden_size=config.hidden_dim,
                             num_layers=config.num_rnn_layers,
                             dropout=0,  # num_layers=1时是无效的
@@ -52,18 +62,22 @@ class BiRNN(nn.Module):
         c0 = torch.randn(self.num_rnn_layers * self.num_directions, batch_size, self.hidden_dim)
         return h0, c0
 
-    def forward(self, inputs_ids, input_mask):
+    def forward(self, input_ids, input_mask):
         # x shape:
         # [batch_size, padded sentence_length]  ids
         # [batch_size, padded sentence_length, embedding_size]   pretrain emb
 
-        batch_size = inputs_ids.size(0)  # 获取当前数据实际的batch
+        batch_size = input_ids.size(0)  # 获取当前数据实际的batch
         # h0, c0 = self.init_hidden(batch_size)   # 初始化 lstm最初的前项输出
 
-        if self.embedding_pretrained is not None:
+        if self.embedding_pretrained == 'bert':
+            bert_outputs = self.bert_encoder(input_ids=input_ids, attention_mask=input_mask)
+            embeds = bert_outputs[0]  # bert_last_hidden_state
+
+        elif self.embedding_pretrained == 'wv':
             pass
         else:
-            embeds = self.embedding(inputs_ids)
+            embeds = self.embedding(input_ids)
             embeds = self.dropout(embeds)
             embeds = embeds * input_mask.float().unsqueeze(2)  # padded对应的embed 置0
 
@@ -91,7 +105,7 @@ class BiRNN_CRF(nn.Module):
         super().__init__()
 
         self.birnn = BiRNN(config)
-        self.transitions = nn.Parameter(torch.randn(config.num_classes, config.num_classes))
+        # self.transitions = nn.Parameter(torch.randn(config.num_classes, config.num_classes))
         self.crf = CRF(config.num_classes, batch_first=True)
 
     def forward(self, input_ids, input_mask, label_ids):  # for training
@@ -106,6 +120,7 @@ class BiRNN_CRF(nn.Module):
         lstm_feats = self.birnn(input_ids, input_mask)
         preds = self.crf.decode(emissions=lstm_feats, mask=input_mask)
         return preds
+
 
 class Config(object):
     def __init__(self):
@@ -128,28 +143,13 @@ class Config(object):
 
 
 if __name__ == '__main__':
-
-    # "[START]", "[END]"
-    START_TAG = '<START>'
-    STOP_TAG = '<STOP>'
-
-    config = Config()
-
     embed_size, num_hiddens, num_layers = 300, 100, 2
     net = BiRNN(vocab, embed_size, num_hiddens, num_layers)
     # 加载维基百科预训练词向量(使用fasttext),cache为保存目录
     fasttext_vocab = Vocab.FastText(cache=os.path.join(DATA_ROOT, "fasttext"))
-
     # fastext_vocab是预训练好的词向量
     net.embedding.weight.data.copy_(load_pretrained_embedding(vocab.itos,
                                                               fasttext_vocab))
     net.embedding.weight.requires_grad = False
     net = net.to(device)
-
     model = BiLSTM(config)
-
-    for X, y in train_iter:
-        X = X.to(device)
-        y = y.to(device)
-        y_hat = net(X)
-        loss_ = loss(y_hat, y)

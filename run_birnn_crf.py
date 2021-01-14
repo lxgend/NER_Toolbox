@@ -44,7 +44,8 @@ class Args(object):
 
 class RNN_config(object):
     def __init__(self, embedding_dim, vocab_size, num_classes):
-        self.embedding_pretrained = None
+        self.embedding_pretrained = 'bert'
+
         self.embedding_dim = embedding_dim  # wv 维度
         self.hidden_dim = 64
 

@@ -44,7 +44,7 @@ class Args(object):
 
 class RNN_config(object):
     def __init__(self, embedding_dim, vocab_size, num_classes):
-        self.embedding_pretrained = 'bert'
+        self.embedding_pretrained = None
 
         self.embedding_dim = embedding_dim  # wv 维度
         self.hidden_dim = 64
@@ -110,6 +110,8 @@ def evaluate(args, eval_dataset, model):
 
             batch_data = tuple(t.to(args.device) for t in batch_data)
             batch_input_ids, batch_input_mask, batch_segment_ids, batch_label_ids = batch_data
+
+            print(batch_label_ids)
 
             predictions = model.predict(batch_input_ids, batch_input_mask)
 

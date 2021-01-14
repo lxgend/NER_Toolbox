@@ -105,7 +105,7 @@ class BiRNN_CRF(nn.Module):
         super().__init__()
 
         self.birnn = BiRNN(config)
-        # self.transitions = nn.Parameter(torch.randn(config.num_classes, config.num_classes))
+        # self.transitions = nn.Parameter(torch.randn(config.num_classes, config.num_classes)) # 转移矩阵，随机初始化
         self.crf = CRF(config.num_classes, batch_first=True)
 
     def forward(self, input_ids, input_mask, label_ids):  # for training

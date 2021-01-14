@@ -22,6 +22,7 @@ class Args(object):
         self.task_name = 'cluener'
         self.data_dir = os.path.join(*[os.path.dirname(os.path.abspath(__file__)), 'data', 'cluener_public'])
         self.overwrite_cache = 1
+
         self.local_rank = -1
         self.n_gpu = torch.cuda.device_count()
 
@@ -41,10 +42,12 @@ class Args(object):
         self.do_test = 0
         self.test_batch_size = 1
 
+        self.modelfile_finetuned = '%s_%s_fine_tuned.pt' % (self.task_name, self.model_type)
+
 
 class RNN_config(object):
     def __init__(self, embedding_dim, vocab_size, num_classes):
-        self.embedding_pretrained = None
+        self.embedding_pretrained = 'bert'
 
         self.embedding_dim = embedding_dim  # wv 维度
         self.hidden_dim = 64
@@ -88,7 +91,7 @@ def train(args, train_dataset, model):
 
             global_step += 1
 
-    torch.save(model.state_dict(), 'cluener_fine_tuned_lstmcrf.pt')
+    torch.save(model.state_dict(), args.modelfile_finetuned)
 
     return global_step
 
@@ -173,7 +176,7 @@ def main(args):
     if args.do_eval:
         eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='dev')
 
-        model.load_state_dict(torch.load('cluener_fine_tuned_lstmcrf.pt', map_location=lambda storage, loc: storage))
+        model.load_state_dict(torch.load(args.modelfile_finetuned, map_location=lambda storage, loc: storage))
         model.to(args.device)
         evaluate(args, eval_dataset, model)
 

@@ -18,53 +18,6 @@ from nets.plm import MODEL_CLASSES
 logger = logging.getLogger(__name__)
 
 
-def main(args):
-    # 1. setup CUDA, GPU & distributed training
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    args.device = device
-
-    # 2. processor 初始化
-    data_dir = args.data_dir
-    task_name = args.task_name
-    ner_data_processor = ner_data_processors[task_name](data_dir)
-
-    label_list = ner_data_processor.get_labels()
-    args.num_labels = len(label_list)
-    print("num_labels: %d" % args.num_labels)
-    # args.id2label = {i: label for i, label in enumerate(label_list)}
-    # label2id = {label: i for i, label in enumerate(label_list)}
-
-    model_class, tokenizer_class, model_path = MODEL_CLASSES[args.model_type]
-
-    tokenizer = tokenizer_class.from_pretrained(model_path)
-    model = Bert_CRF(path=model_path, num_tag=args.num_labels)
-
-    # for name, param in model.crf.named_parameters():
-    #     if param.requires_grad:
-    #         print(name)
-    model.to(args.device)
-
-    args.modelfile_finetuned = 'finetuned_%s_%s_%s.pt' % (args.task_name, args.model_type, 'crf')
-
-    # 4.分支操作
-    # Training
-    if args.do_train:
-        # 读数据
-        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='train')
-        print('train_dataset len: %d' % len(train_dataset))
-
-        # train
-        global_step = train(args, train_dataset, model)
-        print("global_step = %s" % global_step)
-
-    # Evaluation
-    if args.do_eval:
-        eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='dev')
-
-        model.load_state_dict(torch.load(args.modelfile_finetuned, map_location=lambda storage, loc: storage))
-        model.to(args.device)
-        evaluate(args, eval_dataset, model)
-
 
 def train(args, train_dataset, model):
     """Train the model on `steps` batches"""
@@ -195,6 +148,52 @@ class Args(object):
         self.do_test = 0
         self.test_batch_size = 1
 
+def main(args):
+    # 1. setup CUDA, GPU & distributed training
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    args.device = device
+
+    # 2. processor 初始化
+    data_dir = args.data_dir
+    task_name = args.task_name
+    ner_data_processor = ner_data_processors[task_name](data_dir)
+
+    label_list = ner_data_processor.get_labels()
+    args.num_labels = len(label_list)
+    print("num_labels: %d" % args.num_labels)
+    # args.id2label = {i: label for i, label in enumerate(label_list)}
+    # label2id = {label: i for i, label in enumerate(label_list)}
+
+    model_class, tokenizer_class, model_path = MODEL_CLASSES[args.model_type]
+
+    tokenizer = tokenizer_class.from_pretrained(model_path)
+    model = Bert_CRF(path=model_path, num_tag=args.num_labels)
+
+    # for name, param in model.crf.named_parameters():
+    #     if param.requires_grad:
+    #         print(name)
+    model.to(args.device)
+
+    args.modelfile_finetuned = 'finetuned_%s_%s_%s.pt' % (args.task_name, args.model_type, 'crf')
+
+    # 4.分支操作
+    # Training
+    if args.do_train:
+        # 读数据
+        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='train')
+        print('train_dataset len: %d' % len(train_dataset))
+
+        # train
+        global_step = train(args, train_dataset, model)
+        print("global_step = %s" % global_step)
+
+    # Evaluation
+    if args.do_eval:
+        eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='dev')
+
+        model.load_state_dict(torch.load(args.modelfile_finetuned, map_location=lambda storage, loc: storage))
+        model.to(args.device)
+        evaluate(args, eval_dataset, model)
 
 if __name__ == '__main__':
     # args = get_argparse().parse_args()

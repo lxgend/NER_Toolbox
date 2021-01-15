@@ -168,11 +168,9 @@ def main(args):
         train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='train')
         print('train_dataset len: %d' % len(train_dataset))
 
-        train(args, train_dataset, model)
-
         # train
-        # global_step = train(args, train_dataset, model)
-        # print("global_step = %s" % global_step)
+        global_step = train(args, train_dataset, model)
+        print("global_step = %s" % global_step)
 
     # Evaluation
     if args.do_eval:

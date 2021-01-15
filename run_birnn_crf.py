@@ -42,8 +42,6 @@ class Args(object):
         self.do_test = 0
         self.test_batch_size = 1
 
-        self.modelfile_finetuned = '%s_%s_fine_tuned.pt' % (self.task_name, self.model_type)
-
 
 class RNN_config(object):
     def __init__(self, device, embedding_pretrained, embedding_dim, vocab_size, num_classes):
@@ -115,21 +113,21 @@ def evaluate(args, eval_dataset, model):
             batch_data = tuple(t.to(args.device) for t in batch_data)
             batch_input_ids, batch_input_mask, batch_segment_ids, batch_label_ids = batch_data
 
-            print(batch_label_ids)
-
             predictions = model.predict(batch_input_ids, batch_input_mask)
 
             # padding
-            predictions = list(map(lambda x: x + [31] * (55 - len(x)), predictions))
-            predictions = np.array(predictions)
+            predictions = list(map(lambda x: x + [31] * (args.eval_max_seq_length - len(x)), predictions))
 
             print(predictions)
+            print(predictions)
+
+            predictions = np.array(predictions)
 
             pred_labels = np.append(pred_labels, predictions)
             true_labels = np.append(true_labels, batch_label_ids.detach().cpu().numpy())
 
         # 查看各个类别的准召
-        tags = list(range(34))
+        tags = list(range(args.num_labels))
         print(classification_report(pred_labels, true_labels, labels=tags))
 
 
@@ -144,25 +142,26 @@ def main(args):
     ner_data_processor = ner_data_processors[task_name](data_dir)
 
     label_list = ner_data_processor.get_labels()
-    label2id = {label: i for i, label in enumerate(label_list)}
-
-    num_labels = len(label_list)
-    print("num_labels: %d" % num_labels)
+    args.num_labels = len(label_list)
+    print("num_labels: %d" % args.num_labels)
+    args.id2label = {i: label for i, label in enumerate(label_list)}
+    # label2id = {label: i for i, label in enumerate(label_list)}
 
     model_class, tokenizer_class, model_path = MODEL_CLASSES['bert']
 
     tokenizer = tokenizer_class.from_pretrained(model_path)
     vocab_size = tokenizer.vocab_size
-
-    print(label2id)
     print(vocab_size)
 
     # vocab = tokenizer.get_vocab()
-
-    config = RNN_config(embedding_dim=100, vocab_size=vocab_size, num_classes=num_labels)
+    config = RNN_config(device=device, embedding_pretrained=None, embedding_dim=100, vocab_size=vocab_size,
+                        num_classes=args.num_labels)
     model = BiRNN_CRF(config=config)
     model.to(args.device)
     print(model)
+
+    args.modelfile_finetuned = 'finetuned_%s_%s_%s_%s.pt' % (
+        args.task_name, config.embedding_pretrained, args.model_type, 'crf')
 
     if args.do_train:
         # 读数据

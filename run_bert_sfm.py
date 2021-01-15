@@ -97,8 +97,9 @@ def evaluate(args, eval_dataset, model):
             true_labels = np.append(true_labels, batch_label_ids.detach().cpu().numpy())
 
     # 查看各个类别的准召
-    tags = list(range(34))
+    tags = list(range(args.num_labels))
     print(classification_report(pred_labels, true_labels, labels=tags))
+
 
 
 def predict(args, test_dataset, model):
@@ -106,7 +107,7 @@ def predict(args, test_dataset, model):
     test_dataloader = DataLoader(test_dataset, sampler=test_sampler, batch_size=1)
 
     results = []
-
+    # fixme
     from data_processor.data_example import get_entity
 
     with torch.no_grad():
@@ -163,11 +164,8 @@ def main(args):
     ner_data_processor = ner_data_processors[task_name](data_dir)
 
     label_list = ner_data_processor.get_labels()
-
-    num_labels = len(label_list)
-    print("num_labels")
-    print(num_labels)
-
+    args.num_labels = len(label_list)
+    print("num_labels: %d" % args.num_labels)
     args.id2label = {i: label for i, label in enumerate(label_list)}
     # label2id = {label: i for i, label in enumerate(label_list)}
 
@@ -178,8 +176,7 @@ def main(args):
     model_class, tokenizer_class, model_path = MODEL_CLASSES[args.model_type]
 
     tokenizer = tokenizer_class.from_pretrained(model_path)
-    model = model_class.from_pretrained(model_path, num_labels=num_labels)
-
+    model = model_class.from_pretrained(model_path, num_labels=args.num_labels)
     print(model)
 
     # if args.local_rank == 0:
@@ -188,6 +185,8 @@ def main(args):
 
     print("args.device")
     print(args.device)
+
+    args.modelfile_finetuned = 'finetuned_%s_%s.pt'%(args.task_name, args.model_type)
 
     # 4.分支操作
     # Training
@@ -307,7 +306,6 @@ class Args(object):
         self.task_name = 'cluener'
         self.data_dir = os.path.join(*[os.path.dirname(os.path.abspath(__file__)), 'data', 'cluener_public'])
         self.overwrite_cache = 1
-        self.modelfile_finetuned ='cluener_fine_tuned.pt'
         self.local_rank = 0
         self.n_gpu = torch.cuda.device_count()
         self.train_max_seq_length = 55

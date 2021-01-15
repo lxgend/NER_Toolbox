@@ -29,19 +29,22 @@ def main(args):
     ner_data_processor = ner_data_processors[task_name](data_dir)
 
     label_list = ner_data_processor.get_labels()
-
-    num_labels = len(label_list)
-    print("num_labels: %d" % num_labels)
+    args.num_labels = len(label_list)
+    print("num_labels: %d" % args.num_labels)
+    # args.id2label = {i: label for i, label in enumerate(label_list)}
+    # label2id = {label: i for i, label in enumerate(label_list)}
 
     model_class, tokenizer_class, model_path = MODEL_CLASSES[args.model_type]
 
     tokenizer = tokenizer_class.from_pretrained(model_path)
-    model = Bert_CRF(path=model_path, num_tag=num_labels)
+    model = Bert_CRF(path=model_path, num_tag=args.num_labels)
 
     # for name, param in model.crf.named_parameters():
     #     if param.requires_grad:
     #         print(name)
     model.to(args.device)
+
+    args.modelfile_finetuned = 'finetuned_%s_%s_%s.pt' % (args.task_name, args.model_type, 'crf')
 
     # 4.分支操作
     # Training
@@ -58,7 +61,7 @@ def main(args):
     if args.do_eval:
         eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ner_data_processor, data_type='dev')
 
-        model.load_state_dict(torch.load('cluener_fine_tuned.pt', map_location=lambda storage, loc: storage))
+        model.load_state_dict(torch.load(args.modelfile_finetuned, map_location=lambda storage, loc: storage))
         model.to(args.device)
         evaluate(args, eval_dataset, model)
 
@@ -124,7 +127,7 @@ def train(args, train_dataset, model):
 
             global_step += 1
 
-    torch.save(model.state_dict(), 'cluener_fine_tuned.pt')
+    torch.save(model.state_dict(), args.modelfile_finetuned)
 
     return global_step
 
@@ -154,14 +157,14 @@ def evaluate(args, eval_dataset, model):
             predictions = model.crf.decode(emissions=logits, mask=batch_input_mask)
 
             # padding
-            predictions = list(map(lambda x: x + [31] * (55 - len(x)), predictions))
+            predictions = list(map(lambda x: x + [31] * (args.eval_max_seq_length - len(x)), predictions))
             predictions = np.array(predictions)
 
             pred_labels = np.append(pred_labels, predictions)
             true_labels = np.append(true_labels, batch_label_ids.detach().cpu().numpy())
 
         # 查看各个类别的准召
-        tags = list(range(34))
+        tags = list(range(args.num_labels))
         print(classification_report(pred_labels, true_labels, labels=tags))
 
 

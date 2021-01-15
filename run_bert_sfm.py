@@ -239,8 +239,6 @@ def main(args):
 
 
 import json
-
-
 def submit(args):
     if args.task_name == 'cluener':
 

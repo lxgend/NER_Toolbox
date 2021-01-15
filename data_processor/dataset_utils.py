@@ -44,9 +44,9 @@ def convert_examples_to_features(
     """
 
     # label to id
-    label_map = {label: i for i, label in enumerate(label_list)}
-    print(label_map)
-    print(len(label_map))
+    label2id = {label: i for i, label in enumerate(label_list)}
+    print(label2id)
+    print(len(label2id))
 
     features = []
     for (ex_index, example) in enumerate(examples):
@@ -57,7 +57,8 @@ def convert_examples_to_features(
 
         tokens = example.text_a
 
-        label_ids = [label_map[x] for x in example.labels]
+        label_ids = [label2id[x] for x in example.labels]
+
         # Account for [CLS] and [SEP] with "- 2".
         special_tokens_count = 2
         if len(tokens) > max_seq_length - special_tokens_count:
@@ -65,35 +66,29 @@ def convert_examples_to_features(
             tokens = tokens[: (max_seq_length - special_tokens_count)]
             label_ids = label_ids[: (max_seq_length - special_tokens_count)]
 
-        # (a) For sequence pairs:
-        #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
-        #  type_ids:   0   0  0    0    0     0       0   0   1  1  1  1   1   1
-        # (b) For single sequences:
-        #  tokens:   [CLS] the dog is hairy . [SEP]
-        #  type_ids:   0   0   0   0  0     0   0
-
         # 结尾补上 [SEP]
         tokens += [sep_token]
-        label_ids += [label_map['O']]
+        label_ids += [label2id['O']]
         segment_ids = [sequence_a_segment_id] * len(tokens)
 
         # 结尾补上 [CLS]
         if cls_token_at_end:
             tokens += [cls_token]
-            label_ids += [label_map['O']]
+            label_ids += [label2id['O']]
             segment_ids += [cls_token_segment_id]
 
         # 开头补上 [CLS]
         else:
             tokens = [cls_token] + tokens
-            label_ids = [label_map['O']] + label_ids
+            label_ids = [label2id['O']] + label_ids
             segment_ids = [cls_token_segment_id] + segment_ids
 
+        # char to id
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
-        # The mask has 1 for real tokens and 0 for padding tokens. Only real
-        # tokens are attended to.
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real tokens are attended to.
         input_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
         input_len = len(label_ids)
+
         # Zero-pad up to the sequence length.
         padding_length = max_seq_length - len(input_ids)
         if pad_on_left:

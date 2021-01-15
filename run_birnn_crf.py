@@ -3,12 +3,11 @@ import logging
 import os
 
 import torch
+from torch.optim import SGD
 from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import RandomSampler
 from torch.utils.data import SequentialSampler
-from torch.optim import SGD
-from transformers import BertTokenizer
 
 from data_processor.data_example import ner_data_processors
 from data_processor.dataset_utils import load_and_cache_examples
@@ -16,6 +15,7 @@ from data_processor.dataset_utils import load_and_cache_examples
 logger = logging.getLogger(__name__)
 from nets.birnn import BiRNN_CRF
 from nets.plm import MODEL_CLASSES
+
 
 class Args(object):
     def __init__(self):
@@ -46,12 +46,12 @@ class Args(object):
 
 
 class RNN_config(object):
-    def __init__(self, embedding_dim, vocab_size, num_classes):
-        self.embedding_pretrained = 'bert'
-
+    def __init__(self, device, embedding_pretrained, embedding_dim, vocab_size, num_classes):
+        self.device = device
+        self.embedding_pretrained = embedding_pretrained
         self.embedding_dim = embedding_dim  # wv 维度
-        self.hidden_dim = 64
 
+        self.hidden_dim = 64  # 单向lstm hidden_dim
         self.num_rnn_layers = 1
         self.num_directions = 2
         self.dropout = 0.1
@@ -59,10 +59,11 @@ class RNN_config(object):
         self.vocab_size = vocab_size  # 词表大小
         self.num_classes = num_classes  # label数
         self.max_len = 64  # 单个句子的长度
+
         self.lr = 1e-3
         self.batch_size = 16
         self.epochs = 10
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def train(args, train_dataset, model):
     """Train the model on `steps` batches"""
@@ -95,11 +96,11 @@ def train(args, train_dataset, model):
 
     return global_step
 
+
 def evaluate(args, eval_dataset, model):
     from sklearn.metrics import classification_report
     import numpy as np
     from tqdm import tqdm
-
 
     eval_sampler = SequentialSampler(eval_dataset)
     eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
@@ -121,6 +122,8 @@ def evaluate(args, eval_dataset, model):
             # padding
             predictions = list(map(lambda x: x + [31] * (55 - len(x)), predictions))
             predictions = np.array(predictions)
+
+            print(predictions)
 
             pred_labels = np.append(pred_labels, predictions)
             true_labels = np.append(true_labels, batch_label_ids.detach().cpu().numpy())

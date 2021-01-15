@@ -73,6 +73,7 @@ class DataProcessor(object):
                 lines.append({"words": words, "labels": labels})
         return lines
 
+    # 重要，raw text to BIOS text
     @classmethod
     def _read_json(self, input_file) -> List[Dict]:
         lines = []
@@ -103,40 +104,41 @@ class CluenerProcessor(DataProcessor):
     def get_train_examples(self) -> List[InputExample]:
         """See base class."""
         result = self._create_examples(self._read_json(os.path.join(self.data_dir, "train.json")), "train")
-        # result = result[:32]
+        result = result[:32]
 
         return result
 
     def get_dev_examples(self):
         """See base class."""
-        return self._create_examples(self._read_json(os.path.join(self.data_dir, "dev.json")), "dev")
+        result = self._create_examples(self._read_json(os.path.join(self.data_dir, "dev.json")), "dev")
+        result = result[:32]
+
+        return result
 
     def get_test_examples(self):
         """See base class."""
         return self._create_examples(self._read_json(os.path.join(self.data_dir, "test.json")), "test")
 
     def get_labels(self):
-        """See base class."""
-        return ["X", "B-address", "B-book", "B-company", 'B-game', 'B-government', 'B-movie', 'B-name',
-                'B-organization', 'B-position', 'B-scene', "I-address",
-                "I-book", "I-company", 'I-game', 'I-government', 'I-movie', 'I-name',
+        # 中文单字符实体，标为S
+        return ['O',
+                'B-address', 'B-book', 'B-company', 'B-game', 'B-government', 'B-movie', 'B-name',
+                'B-organization', 'B-position', 'B-scene',
+                'I-address', 'I-book', 'I-company', 'I-game', 'I-government', 'I-movie', 'I-name',
                 'I-organization', 'I-position', 'I-scene',
-                "S-address", "S-book", "S-company", 'S-game', 'S-government', 'S-movie',
-                'S-name', 'S-organization', 'S-position',
-                'S-scene', 'O', "[START]", "[END]"]
+                'S-address', 'S-book', 'S-company', 'S-game', 'S-government', 'S-movie', 'S-name',
+                'S-organization', 'S-position', 'S-scene',
+                '<START>', '<END>']
 
     def _create_examples(self, lines, set_type) -> List[InputExample]:
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
-            text_a = line['words']
-            # BIOS
-            labels = line['labels']
-
+            text_a = line['words']  # char list
+            labels = line['labels']  # BIOS list
             examples.append(InputExample(guid=guid, text_a=text_a, labels=labels))
         return examples
-
 
 ner_data_processors = {
     'cluener': CluenerProcessor,
@@ -144,6 +146,7 @@ ner_data_processors = {
 }
 
 
+# 没用到
 def get_entity(seq, id2label):
     chunks = []
     chunk = [-1, -1, -1]  # type, start indx, end indx
@@ -176,6 +179,7 @@ def get_entity(seq, id2label):
     return chunks
 
 
+# 没用到
 def get_entity_bio(seq, id2label):
     """Gets entities from sequence.
     note: BIO
@@ -217,3 +221,7 @@ def get_entity_bio(seq, id2label):
                 chunks.append(chunk)
             chunk = [-1, -1, -1]
     return chunks
+
+
+if __name__ == '__main__':
+    pass

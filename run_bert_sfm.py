@@ -98,8 +98,7 @@ def evaluate(args, eval_dataset, model):
 
     # 查看各个类别的准召
     tags = list(range(args.num_labels))
-    print(classification_report(pred_labels, true_labels, labels=tags))
-
+    print(classification_report(true_labels, pred_labels, labels=tags))
 
 
 def predict(args, test_dataset, model):
@@ -186,7 +185,7 @@ def main(args):
     print("args.device")
     print(args.device)
 
-    args.modelfile_finetuned = 'finetuned_%s_%s.pt'%(args.task_name, args.model_type)
+    args.modelfile_finetuned = 'finetuned_%s_%s.pt' % (args.task_name, args.model_type)
 
     # 4.分支操作
     # Training
@@ -238,6 +237,8 @@ def main(args):
 
 
 import json
+
+
 def submit(args):
     if args.task_name == 'cluener':
 
@@ -312,7 +313,7 @@ class Args(object):
         self.eval_max_seq_length = 55
         self.model_type = 'bert'
 
-        self.do_train = 1
+        self.do_train = 0
         self.per_gpu_train_batch_size = 16
         self.num_train_epochs = 3
         self.max_steps = -1

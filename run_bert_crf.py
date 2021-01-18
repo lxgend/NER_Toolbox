@@ -109,6 +109,7 @@ def evaluate(args, eval_dataset, model):
 
             predictions = model.crf.decode(emissions=logits, mask=batch_input_mask)
 
+
             # padding
             predictions = list(map(lambda x: x + [31] * (args.eval_max_seq_length - len(x)), predictions))
             predictions = np.array(predictions)
@@ -118,7 +119,7 @@ def evaluate(args, eval_dataset, model):
 
         # 查看各个类别的准召
         tags = list(range(args.num_labels))
-        print(classification_report(pred_labels, true_labels, labels=tags))
+        print(classification_report(true_labels, pred_labels, labels=tags))
 
 
 class Args(object):

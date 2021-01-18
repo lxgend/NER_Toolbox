@@ -119,7 +119,7 @@ class CluenerProcessor(DataProcessor):
         """See base class."""
         return self._create_examples(self._read_json(os.path.join(self.data_dir, "test.json")), "test")
 
-    def get_labels(self):
+    def get_labels_bios(self):
         # 中文单字符实体，标为S
         return ['O',
                 'B-address', 'B-book', 'B-company', 'B-game', 'B-government', 'B-movie', 'B-name',
@@ -129,6 +129,14 @@ class CluenerProcessor(DataProcessor):
                 'S-address', 'S-book', 'S-company', 'S-game', 'S-government', 'S-movie', 'S-name',
                 'S-organization', 'S-position', 'S-scene',
                 '<START>', '<END>']
+
+    def get_labels(self):
+        # 中文单字符实体，标为S
+        return ['O',
+                'B-address', 'B-book', 'B-company', 'B-game', 'B-government', 'B-movie', 'B-name',
+                'B-organization', 'B-position', 'B-scene',
+                'I-address', 'I-book', 'I-company', 'I-game', 'I-government', 'I-movie', 'I-name',
+                'I-organization', 'I-position', 'I-scene']
 
     def _create_examples(self, lines, set_type) -> List[InputExample]:
         """Creates examples for the training and dev sets."""

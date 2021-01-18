@@ -118,9 +118,6 @@ def evaluate(args, eval_dataset, model):
             # padding
             predictions = list(map(lambda x: x + [31] * (args.eval_max_seq_length - len(x)), predictions))
 
-            print(predictions)
-            print(predictions)
-
             predictions = np.array(predictions)
 
             pred_labels = np.append(pred_labels, predictions)
@@ -128,7 +125,7 @@ def evaluate(args, eval_dataset, model):
 
         # 查看各个类别的准召
         tags = list(range(args.num_labels))
-        print(classification_report(pred_labels, true_labels, labels=tags))
+        print(classification_report(true_labels, pred_labels, labels=tags))
 
 
 def main(args):

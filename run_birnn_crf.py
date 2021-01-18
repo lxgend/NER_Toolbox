@@ -116,7 +116,7 @@ def evaluate(args, eval_dataset, model):
             predictions = model.predict(batch_input_ids, batch_input_mask)
 
             # padding
-            predictions = list(map(lambda x: x + [31] * (args.eval_max_seq_length - len(x)), predictions))
+            predictions = list(map(lambda x: x + [0] * (args.eval_max_seq_length - len(x)), predictions))
 
             predictions = np.array(predictions)
 

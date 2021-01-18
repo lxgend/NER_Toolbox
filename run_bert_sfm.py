@@ -313,7 +313,7 @@ class Args(object):
         self.eval_max_seq_length = 55
         self.model_type = 'bert'
 
-        self.do_train = 0
+        self.do_train = 1
         self.per_gpu_train_batch_size = 16
         self.num_train_epochs = 3
         self.max_steps = -1

@@ -4,8 +4,8 @@ CLUENER
 
 | MODEL               | Text representation | F1 weighted avg |
 | ----------------    | ------------------  | --------------- |
-| **BERT**            | RoBERTa-wwm         |   0.73          | 
-| **BERT-CRF**        | RoBERTa-wwm         |   0.78          | 
+| **BERT**            | RoBERTa-wwm         |   0.86          | 
+| **BERT-CRF**        | RoBERTa-wwm         |   0.95          | 
 | **BiLSTM-CRF**      | random embedding    |   0.53          |
 | **BERT-BiLSTM-CRF** | RoBERTa-wwm         |   0.53          |
 

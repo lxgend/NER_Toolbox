@@ -104,14 +104,14 @@ class CluenerProcessor(DataProcessor):
     def get_train_examples(self) -> List[InputExample]:
         """See base class."""
         result = self._create_examples(self._read_json(os.path.join(self.data_dir, "train.json")), "train")
-        result = result[:32]
+        # result = result[:32]
 
         return result
 
     def get_dev_examples(self):
         """See base class."""
         result = self._create_examples(self._read_json(os.path.join(self.data_dir, "dev.json")), "dev")
-        result = result[:32]
+        # result = result[:32]
 
         return result
 

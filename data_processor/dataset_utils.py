@@ -68,19 +68,19 @@ def convert_examples_to_features(
 
         # 结尾补上 [SEP]
         tokens += [sep_token]
-        label_ids += [label2id['O']]
+        label_ids += [label2id['X']]
         segment_ids = [sequence_a_segment_id] * len(tokens)
 
         # 结尾补上 [CLS]
         if cls_token_at_end:
             tokens += [cls_token]
-            label_ids += [label2id['O']]
+            label_ids += [label2id['X']]
             segment_ids += [cls_token_segment_id]
 
         # 开头补上 [CLS]
         else:
             tokens = [cls_token] + tokens
-            label_ids = [label2id['O']] + label_ids
+            label_ids = [label2id['X']] + label_ids
             segment_ids = [cls_token_segment_id] + segment_ids
 
         # char to id

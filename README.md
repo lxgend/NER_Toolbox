@@ -2,12 +2,12 @@
 
 CLUENER
 
-| MODEL               | Text representation | F1 weighted avg |
-| ----------------    | ------------------  | --------------- |
-| **BERT**            | RoBERTa-wwm         |   0.86          | 
-| **BERT-CRF**        | RoBERTa-wwm         |   0.95          | 
-| **BiLSTM-CRF**      | random embedding    |   0.53          |
-| **BERT-BiLSTM-CRF** | RoBERTa-wwm         |   0.53          |
+| MODEL               | Text representation | F1 micro avg; macro avg  |
+| ----------------    | ------------------  | ------------------------ |
+| **BERT**            | RoBERTa-wwm         |   0.60; 0.17             | 
+| **BERT-CRF**        | RoBERTa-wwm         |   0.95; 0.57             | 
+| **BiLSTM-CRF**      | random embedding    |   0.72; 0.08             |
+| **BERT-BiLSTM-CRF** | RoBERTa-wwm         |   0.82; 0.06             |
 
 
 

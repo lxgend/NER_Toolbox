@@ -3,11 +3,11 @@ import logging
 import os
 
 import torch
-from torch.optim import SGD
 from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import RandomSampler
 from torch.utils.data import SequentialSampler
+from torch.optim import SGD
 
 from data_processor.data_example import ner_data_processors
 from data_processor.dataset_utils import load_and_cache_examples
@@ -30,6 +30,10 @@ class Args(object):
         self.eval_max_seq_length = 55
         self.model_type = 'lstm'
 
+        self.weight_decay = 0.01
+        self.bert_lr = 0.0001
+        self.crf_lr = self.bert_lr * 100
+
         self.do_train = 1
         self.per_gpu_train_batch_size = 16
         self.num_train_epochs = 3
@@ -42,6 +46,8 @@ class Args(object):
         self.do_test = 0
         self.test_batch_size = 1
 
+        self.embedding_pretrained = 'bert'
+
 
 class RNN_config(object):
     def __init__(self, device, embedding_pretrained, embedding_dim, vocab_size, num_classes):
@@ -49,14 +55,14 @@ class RNN_config(object):
         self.embedding_pretrained = embedding_pretrained
         self.embedding_dim = embedding_dim  # wv 维度
 
-        self.hidden_dim = 64  # 单向lstm hidden_dim
+        self.hidden_dim = 128  # 单向lstm hidden_dim
         self.num_rnn_layers = 1
         self.num_directions = 2
         self.dropout = 0.1
 
         self.vocab_size = vocab_size  # 词表大小
         self.num_classes = num_classes  # label数
-        self.max_len = 64  # 单个句子的长度
+        self.max_len = 55  # 单个句子的长度
 
         self.lr = 1e-3
         self.batch_size = 16
@@ -73,7 +79,36 @@ def train(args, train_dataset, model):
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
-    optimizer = SGD(model.parameters(), lr=0.0001, momentum=0.8)
+    # from torch.optim import SGD
+    # optimizer = SGD(model.parameters(), lr=0.0001, momentum=0.8)
+
+    # Prepare optimizer and schedule (linear warmup and decay)
+    # 不需要权重衰减的参数
+    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+    crf_param_optimizer = list(model.crf.named_parameters())
+
+    if args.embedding_pretrained == 'bert':
+        bert_param_optimizer = list(model.birnn.bert_encoder.named_parameters())
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in bert_param_optimizer if not any(nd in n for nd in no_decay)],
+             'weight_decay': args.weight_decay, 'lr': args.bert_lr},
+            {'params': [p for n, p in bert_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+             'lr': args.bert_lr},
+
+            {'params': [p for n, p in crf_param_optimizer if not any(nd in n for nd in no_decay)],
+             'weight_decay': args.weight_decay, 'lr': args.crf_lr},
+            {'params': [p for n, p in crf_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+             'lr': args.crf_lr},
+        ]
+    else:
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in crf_param_optimizer if not any(nd in n for nd in no_decay)],
+             'weight_decay': args.weight_decay, 'lr': args.crf_lr},
+            {'params': [p for n, p in crf_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+             'lr': args.crf_lr},
+        ]
+    from torch.optim import AdamW
+    optimizer = AdamW(optimizer_grouped_parameters)
 
     global_step = 0
     for epoch in range(int(args.num_train_epochs)):
@@ -115,7 +150,7 @@ def evaluate(args, eval_dataset, model):
 
             predictions = model.predict(batch_input_ids, batch_input_mask)
 
-            # padding
+            # padding: X
             predictions = list(map(lambda x: x + [0] * (args.eval_max_seq_length - len(x)), predictions))
 
             predictions = np.array(predictions)
@@ -151,8 +186,11 @@ def main(args):
     print(vocab_size)
 
     # vocab = tokenizer.get_vocab()
-    config = RNN_config(device=device, embedding_pretrained=None, embedding_dim=100, vocab_size=vocab_size,
+
+    config = RNN_config(device=device, embedding_pretrained=args.embedding_pretrained, embedding_dim=100,
+                        vocab_size=vocab_size,
                         num_classes=args.num_labels)
+
     model = BiRNN_CRF(config=config)
     model.to(args.device)
     print(model)

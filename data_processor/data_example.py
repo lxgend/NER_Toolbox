@@ -121,7 +121,7 @@ class CluenerProcessor(DataProcessor):
 
     def get_labels2(self):
         # 中文单字符实体，标为S
-        return ['O',
+        return ['X', 'O',
                 'B-address', 'B-book', 'B-company', 'B-game', 'B-government', 'B-movie', 'B-name',
                 'B-organization', 'B-position', 'B-scene',
                 'I-address', 'I-book', 'I-company', 'I-game', 'I-government', 'I-movie', 'I-name',
@@ -132,7 +132,7 @@ class CluenerProcessor(DataProcessor):
 
     def get_labels(self):
         # 中文单字符实体，标为S
-        return ['O',
+        return ['X', 'O',
                 'B-address', 'B-book', 'B-company', 'B-game', 'B-government', 'B-movie', 'B-name',
                 'B-organization', 'B-position', 'B-scene',
                 'I-address', 'I-book', 'I-company', 'I-game', 'I-government', 'I-movie', 'I-name',
@@ -149,6 +149,7 @@ class CluenerProcessor(DataProcessor):
             labels = line['labels']  # BIOS list
             examples.append(InputExample(guid=guid, text_a=text_a, labels=labels))
         return examples
+
 
 ner_data_processors = {
     'cluener': CluenerProcessor,

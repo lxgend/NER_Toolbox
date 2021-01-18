@@ -41,7 +41,7 @@ class BiRNN(nn.Module):
                             bidirectional=(config.num_directions == 2),
                             batch_first=True)
 
-        self.hidden2tag = nn.Linear(config.hidden_dim * config.num_directions * config.num_rnn_layers,
+        self.hidden2tag = nn.Linear(config.hidden_dim * config.num_directions,
                                     config.num_classes)
 
         # self.act_func = nn.Softmax(dim=1)

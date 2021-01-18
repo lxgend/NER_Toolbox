@@ -36,7 +36,7 @@ class Args(object):
 
         self.do_train = 1
         self.per_gpu_train_batch_size = 16
-        self.num_train_epochs = 10
+        self.num_train_epochs = 3
         self.max_steps = -1
         self.gradient_accumulation_steps = 1
 
@@ -79,36 +79,36 @@ def train(args, train_dataset, model):
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
-    # from torch.optim import SGD
-    # optimizer = SGD(model.parameters(), lr=0.0001, momentum=0.8)
+    from torch.optim import SGD
+    optimizer = SGD(model.parameters(), lr=0.0001, momentum=0.8)
 
     # Prepare optimizer and schedule (linear warmup and decay)
     # 不需要权重衰减的参数
-    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-    crf_param_optimizer = list(model.crf.named_parameters())
-
-    if args.embedding_pretrained == 'bert':
-        bert_param_optimizer = list(model.birnn.bert_encoder.named_parameters())
-        optimizer_grouped_parameters = [
-            {'params': [p for n, p in bert_param_optimizer if not any(nd in n for nd in no_decay)],
-             'weight_decay': args.weight_decay, 'lr': args.bert_lr},
-            {'params': [p for n, p in bert_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
-             'lr': args.bert_lr},
-
-            {'params': [p for n, p in crf_param_optimizer if not any(nd in n for nd in no_decay)],
-             'weight_decay': args.weight_decay, 'lr': args.crf_lr},
-            {'params': [p for n, p in crf_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
-             'lr': args.crf_lr},
-        ]
-    else:
-        optimizer_grouped_parameters = [
-            {'params': [p for n, p in crf_param_optimizer if not any(nd in n for nd in no_decay)],
-             'weight_decay': args.weight_decay, 'lr': args.crf_lr},
-            {'params': [p for n, p in crf_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
-             'lr': args.crf_lr},
-        ]
-    from torch.optim import AdamW
-    optimizer = AdamW(optimizer_grouped_parameters)
+    # no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+    # crf_param_optimizer = list(model.crf.named_parameters())
+    #
+    # if args.embedding_pretrained == 'bert':
+    #     bert_param_optimizer = list(model.birnn.bert_encoder.named_parameters())
+    #     optimizer_grouped_parameters = [
+    #         {'params': [p for n, p in bert_param_optimizer if not any(nd in n for nd in no_decay)],
+    #          'weight_decay': args.weight_decay, 'lr': args.bert_lr},
+    #         {'params': [p for n, p in bert_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+    #          'lr': args.bert_lr},
+    #
+    #         {'params': [p for n, p in crf_param_optimizer if not any(nd in n for nd in no_decay)],
+    #          'weight_decay': args.weight_decay, 'lr': args.crf_lr},
+    #         {'params': [p for n, p in crf_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+    #          'lr': args.crf_lr},
+    #     ]
+    # else:
+    #     optimizer_grouped_parameters = [
+    #         {'params': [p for n, p in crf_param_optimizer if not any(nd in n for nd in no_decay)],
+    #          'weight_decay': args.weight_decay, 'lr': args.crf_lr},
+    #         {'params': [p for n, p in crf_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+    #          'lr': args.crf_lr},
+    #     ]
+    # from torch.optim import AdamW
+    # optimizer = AdamW(optimizer_grouped_parameters)
 
     global_step = 0
     for epoch in range(int(args.num_train_epochs)):

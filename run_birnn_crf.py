@@ -36,7 +36,7 @@ class Args(object):
 
         self.do_train = 1
         self.per_gpu_train_batch_size = 16
-        self.num_train_epochs = 3
+        self.num_train_epochs = 10
         self.max_steps = -1
         self.gradient_accumulation_steps = 1
 
@@ -46,7 +46,7 @@ class Args(object):
         self.do_test = 0
         self.test_batch_size = 1
 
-        self.embedding_pretrained = 'bert'
+        self.embedding_pretrained = None
 
 
 class RNN_config(object):

@@ -1,7 +1,6 @@
 # coding=utf-8
 import torch.nn as nn
 from torchcrf import CRF
-from transformers import BertForTokenClassification
 
 
 class Bert_CRF(nn.Module):
@@ -25,11 +24,10 @@ class Bert_CRF(nn.Module):
                                  token_type_ids=token_type_ids)
         logits = bert_outputs[0]
 
-
         # torch.Size([batch_size, seq_len, 34])
         # print(logits)
 
-        log_likelihood = self.crf(emissions=logits, tags=labels, mask=attention_mask)
+        log_likelihood = self.crf(emissions=logits, tags=labels, mask=attention_mask, reduction='token_mean')
 
         outputs = (logits,)
 
@@ -49,5 +47,3 @@ if __name__ == '__main__':
     print(BertForTokenClassification)
 
     print(BertModel)
-
-

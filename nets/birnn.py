@@ -112,7 +112,7 @@ class BiRNN_CRF(nn.Module):
         # mask = xw.data.gt(0).float()
         lstm_feats = self.birnn(input_ids, input_mask)
 
-        log_likelihood = self.crf(emissions=lstm_feats, tags=label_ids, mask=input_mask)
+        log_likelihood = self.crf(emissions=lstm_feats, tags=label_ids, mask=input_mask, reduction='token_mean')
         # NLL loss
         return (-1) * log_likelihood
 

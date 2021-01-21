@@ -1,16 +1,12 @@
 # coding=utf-8
 import torch
 import torch.nn as nn
-from torch.nn import Embedding
-from torch.nn import LayerNorm
 from torchcrf import CRF
 
 torch.manual_seed(123)  # 保证每次运行初始化的随机数相同
 
 
 class BiRNN(nn.Module):
-    embedding: Embedding
-
     def __init__(self, config):
         super().__init__()
 
@@ -46,7 +42,7 @@ class BiRNN(nn.Module):
 
         # self.act_func = nn.Softmax(dim=1)
         self.dropout = nn.Dropout(config.dropout)
-        self.layer_norm = LayerNorm(config.hidden_dim * config.num_directions)
+        self.layer_norm = nn.LayerNorm(config.hidden_dim * config.num_directions)
 
         # self.vocab_size = config.vocab_size
         # self.batch_size = config.batch_size
@@ -87,15 +83,6 @@ class BiRNN(nn.Module):
         lstm_out, (hn, cn) = self.lstm(embeds)
         # lstm_out = self.layer_norm(lstm_out)
 
-        lstm_feats = self.hidden2tag(lstm_out)
-        return lstm_feats
-
-    def _get_lstm_features(self, sentence):
-        self.hidden = self.init_hidden()
-        # max_len, batchsize, -1
-        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
-        lstm_out, self.hidden = self.lstm(embeds, self.hidden)
-        lstm_out = lstm_out.view(len(sentence), self.hidden_dim)
         lstm_feats = self.hidden2tag(lstm_out)
         return lstm_feats
 

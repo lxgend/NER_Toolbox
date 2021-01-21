@@ -1,7 +1,7 @@
 # coding=utf-8
 import torch.nn as nn
 from torchcrf import CRF
-
+from transformers import BertForTokenClassification, BertModel
 
 class Bert_CRF(nn.Module):
     def __init__(self,
@@ -42,8 +42,5 @@ class Bert_CRF(nn.Module):
 
 
 if __name__ == '__main__':
-    from transformers import BertForTokenClassification, BertModel
-
     print(BertForTokenClassification)
-
     print(BertModel)

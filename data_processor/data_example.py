@@ -24,8 +24,9 @@ class InputExample(object):
 
 
 class DataProcessor(object):
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, example_form=None):
         self.data_dir = data_dir
+        self.example_form = example_form
 
     def get_train_examples(self):
         """Gets a collection of `InputExample`s for the train set."""
@@ -131,56 +132,89 @@ class CluenerProcessor(DataProcessor):
                 '<START>', '<END>']
 
     def get_labels(self):
-        # 中文单字符实体，标为S
-        return ['X', 'O',
-                'B-address', 'B-book', 'B-company', 'B-game', 'B-government', 'B-movie', 'B-name',
-                'B-organization', 'B-position', 'B-scene',
-                'I-address', 'I-book', 'I-company', 'I-game', 'I-government', 'I-movie', 'I-name',
-                'I-organization', 'I-position', 'I-scene',
-                'S-address', 'S-book', 'S-company', 'S-game', 'S-government', 'S-movie', 'S-name',
-                'S-organization', 'S-position', 'S-scene']
+        if self.example_form == 'span':
+            return ['O',
+                    'address', 'book', 'company', 'game', 'government', 'movie', 'name', 'organization',
+                    'position', 'scene']
+        else:
+            # 中文单字符实体，标为S
+            return ['X', 'O',
+                    'B-address', 'B-book', 'B-company', 'B-game', 'B-government', 'B-movie', 'B-name',
+                    'B-organization', 'B-position', 'B-scene',
+                    'I-address', 'I-book', 'I-company', 'I-game', 'I-government', 'I-movie', 'I-name',
+                    'I-organization', 'I-position', 'I-scene',
+                    'S-address', 'S-book', 'S-company', 'S-game', 'S-government', 'S-movie', 'S-name',
+                    'S-organization', 'S-position', 'S-scene']
 
     def _create_examples(self, lines, set_type) -> List[InputExample]:
         """Creates examples for the training and dev sets."""
         examples = []
-        for (i, line) in enumerate(lines):
-            guid = "%s-%s" % (set_type, i)
-            text_a = line['words']  # char list
-            labels = line['labels']  # BIOS list
-            examples.append(InputExample(guid=guid, text_a=text_a, labels=labels))
+
+        if self.example_form == 'span':
+            for (i, line) in enumerate(lines):
+                guid = "%s-%s" % (set_type, i)
+                text_a = line['words']  # char list
+                labels = line['labels']  # BIOS list
+                subject = get_entities(labels, id2label=None, markup='bios')
+                examples.append(InputExample(guid=guid, text_a=text_a, labels=subject))
+        else:
+            for (i, line) in enumerate(lines):
+                guid = "%s-%s" % (set_type, i)
+                text_a = line['words']  # char list
+                labels = line['labels']  # BIOS list
+                examples.append(InputExample(guid=guid, text_a=text_a, labels=labels))
         return examples
 
 
-ner_data_processors = {
-    'cluener': CluenerProcessor,
-    'cner': 'pass'
-}
+# for span example
+def get_entities(seq, id2label, markup='bios'):
+    assert markup in ['bio', 'bios']
+    if markup == 'bio':
+        return get_entity_bio(seq, id2label)
+    else:
+        return get_entity_bios(seq, id2label)
 
 
-# 没用到
-def get_entity(seq, id2label):
-    chunks = []
-    chunk = [-1, -1, -1]  # type, start indx, end indx
+def get_entity_bios(seq, id2label):
+    """Gets entities from sequence.
+    note: BIOS
+    Args:
+        seq (list): sequence of labels.
+    Returns:
+        list: list of (chunk_type, chunk_start, chunk_end).
+    Example:
+        # >>> seq = ['B-PER', 'I-PER', 'O', 'S-LOC']
+        # >>> get_entity_bios(seq)
+        [['PER', 0,1], ['LOC', 3, 3]]
+    """
+    chunks = []  # result
+    chunk = [-1, -1, -1]  # 一个新chunk (chunk_type, chunk_start, chunk_end)
     for indx, tag in enumerate(seq):
-
-        # int id to label
         if not isinstance(tag, str):
             tag = id2label[tag]
-
-        if tag.startswith("B-") or (tag.startswith("I-") and chunk[1] == -1):
+        if tag.startswith("S-"):
             if chunk[2] != -1:
                 chunks.append(chunk)
-            chunk = [-1, -1, -1]  # 重新init
-            chunk[1] = indx  # start indx
-            chunk[0] = tag.split('-')[1]  # get tag type
-            chunk[2] = indx
-            if indx == len(seq) - 1:  # seq中最后一个char
-                chunks.append(chunk)
-        elif tag.startswith('I-') and chunk[1] != -1:
-            _type = tag.split('-')[1]  # get tag type
-            if _type == chunk[0]:
-                chunk[2] = indx  # update end indx
 
+            chunk = [-1, -1, -1]  # 一个新chunk
+            chunk[1] = indx
+            chunk[2] = indx
+            chunk[0] = tag.split('-')[1]
+            chunks.append(chunk)  # S entity
+
+            chunk = (-1, -1, -1)
+        if tag.startswith("B-"):
+            if chunk[2] != -1:
+                chunks.append(chunk)
+
+            chunk = [-1, -1, -1]
+            chunk[1] = indx
+            chunk[0] = tag.split('-')[1]
+
+        elif tag.startswith('I-') and chunk[1] != -1:
+            _type = tag.split('-')[1]
+            if _type == chunk[0]:
+                chunk[2] = indx
             if indx == len(seq) - 1:
                 chunks.append(chunk)
         else:
@@ -190,14 +224,8 @@ def get_entity(seq, id2label):
     return chunks
 
 
-# 没用到
 def get_entity_bio(seq, id2label):
     """Gets entities from sequence.
-    note: BIO
-    Args:
-        seq (list): sequence of labels.
-    Returns:
-        list: list of (chunk_type, chunk_start, chunk_end).
     Example:
         seq = ['B-PER', 'I-PER', 'O', 'B-LOC']
         get_entity_bio(seq)
@@ -209,8 +237,6 @@ def get_entity_bio(seq, id2label):
     for indx, tag in enumerate(seq):
         if not isinstance(tag, str):
             tag = id2label[tag]
-            print(indx)
-            print(tag)
         if tag.startswith("B-"):
             if chunk[2] != -1:
                 chunks.append(chunk)
@@ -234,5 +260,11 @@ def get_entity_bio(seq, id2label):
     return chunks
 
 
+ner_data_processors = {
+    'cluener': CluenerProcessor,
+    'cner': 'pass'
+}
+
 if __name__ == '__main__':
-    pass
+    seq = ['B-PER', 'I-PER', 'O', 'B-PER', 'I-PER', 'O', 'S-LOC']
+    print(get_entity_bios(seq, id2label=None))

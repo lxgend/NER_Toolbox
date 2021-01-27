@@ -52,10 +52,13 @@ def convert_examples_to_features(
         if ex_index % 10000 == 0:
             logger.info("Writing example %d of %d", ex_index, len(examples))
 
-        textlist = example.text_a
+        tokens = example.text_a
         subjects = example.labels
 
-        tokens = tokenizer.tokenize(textlist)
+        print(tokens)
+        print(subjects)
+
+        # tokens = tokenizer.tokenize(textlist)
         start_ids = [0] * len(tokens)   # label_ids  start
         end_ids = [0] * len(tokens)     # label_ids  end
         subjects_id = []
@@ -64,9 +67,9 @@ def convert_examples_to_features(
             label = subject[0]    # label name
             start = subject[1]    # start idx
             end = subject[2]      # end idx
-            start_ids[start] = label2id[label]
-            end_ids[end] = label2id[label]
-            subjects_id.append((label2id[label], start, end))
+            start_ids[start] = label2id[label]   # start_ids 设为 label id
+            end_ids[end] = label2id[label]       # end_ids 设为 label id
+            subjects_id.append((label2id[label], start, end))   # (label id, start idx, end idx)
 
         # Account for [CLS] and [SEP] with "-2".
         special_tokens_count = 2
@@ -160,7 +163,9 @@ def load_and_cache_examples(args, task, tokenizer, ner_data_processor, data_type
     # 新构建dataset
     else:
         logger.info("Creating features from dataset file at %s", args.data_dir)
+
         label_list = ner_data_processor.get_labels()
+
         if data_type == 'train':
             examples = ner_data_processor.get_train_examples()
         elif data_type == 'dev':
@@ -201,7 +206,7 @@ def load_and_cache_examples(args, task, tokenizer, ner_data_processor, data_type
 
     all_start_ids = torch.tensor([f.start_ids for f in features], dtype=torch.long)
     all_end_ids = torch.tensor([f.end_ids for f in features], dtype=torch.long)
-    all_input_lens = torch.tensor([f.input_len for f in features], dtype=torch.long)
+    # all_input_lens = torch.tensor([f.input_len for f in features], dtype=torch.long)
 
-    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_start_ids, all_end_ids, all_input_lens)
+    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_start_ids, all_end_ids)
     return dataset

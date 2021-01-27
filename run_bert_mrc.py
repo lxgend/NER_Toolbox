@@ -11,7 +11,7 @@ from torch.utils.data import SequentialSampler
 from tqdm import tqdm
 
 from data_processor.data_example import ner_data_processors
-from data_processor.dataset_utils import load_and_cache_examples
+from data_processor.dataset_span import load_and_cache_examples
 from nets.bert_mrc import Bert_MRC
 from nets.plm import MODEL_CLASSES
 
@@ -23,7 +23,9 @@ def train(args, train_dataset, model):
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     print('train_batch_size %d' % args.train_batch_size)
 
-    train_sampler = RandomSampler(train_dataset)
+    # train_sampler = RandomSampler(train_dataset)
+
+    train_sampler = SequentialSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
     lr = 0.0001
@@ -38,23 +40,25 @@ def train(args, train_dataset, model):
 
             batch_data = tuple(t.to(args.device) for t in batch_data)
             batch_input_ids, batch_input_mask, batch_segment_ids, batch_start_ids, batch_end_ids = batch_data
-            optimizer.zero_grad()
-            outputs = model(input_ids=batch_input_ids, attention_mask=batch_input_mask,
-                            token_type_ids=batch_segment_ids, start_positions=batch_start_ids,
-                            end_positions=batch_end_ids)
 
-            loss = outputs[0]
-            # print(loss)
 
-            loss.backward()
-            optimizer.step()
-            if step % 5 == 0:
-                print('epoch: {} | step: {} | loss: {}'.format(epoch, step, loss.item()))
-
-            global_step += 1
-
-    torch.save(model.state_dict(), args.modelfile_finetuned)
-    return global_step
+    #         optimizer.zero_grad()
+    #         outputs = model(input_ids=batch_input_ids, attention_mask=batch_input_mask,
+    #                         token_type_ids=batch_segment_ids, start_positions=batch_start_ids,
+    #                         end_positions=batch_end_ids)
+    #
+    #         loss = outputs[0]
+    #         # print(loss)
+    #
+    #         loss.backward()
+    #         optimizer.step()
+    #         if step % 5 == 0:
+    #             print('epoch: {} | step: {} | loss: {}'.format(epoch, step, loss.item()))
+    #
+    #         global_step += 1
+    #
+    # torch.save(model.state_dict(), args.modelfile_finetuned)
+    # return global_step
 
 
 def evaluate(args, eval_dataset, model):
@@ -69,7 +73,7 @@ def evaluate(args, eval_dataset, model):
             model.eval()
 
             batch_data = tuple(t.to(args.device) for t in batch_data)
-            batch_input_ids, batch_input_mask, batch_segment_ids, batch_star_ids, batch_end_ids= batch_data
+            batch_input_ids, batch_input_mask, batch_segment_ids, batch_star_ids, batch_end_ids = batch_data
 
 
 def main(args):
@@ -78,7 +82,7 @@ def main(args):
     print(args.device)
 
     # 2. processor 初始化
-    ner_data_processor = ner_data_processors[args.task_name](args.data_dir)
+    ner_data_processor = ner_data_processors[args.task_name](data_dir=args.data_dir, example_form='span')
 
     label_list = ner_data_processor.get_labels()
     args.num_labels = len(label_list)
@@ -93,7 +97,7 @@ def main(args):
     model_class, tokenizer_class, model_path = MODEL_CLASSES[args.model_type]
     tokenizer = tokenizer_class.from_pretrained(model_path)
 
-    model = Bert_MRC(path=model_path, num_tag=args.num_labels)
+    model = Bert_MRC(path=model_path, hidden_size=768, hidden_dropout_prob=0.1, num_tag=args.num_labels)
     print(model)
 
     # if args.local_rank == 0:
@@ -145,7 +149,7 @@ class Args(object):
         self.max_steps = -1
         self.gradient_accumulation_steps = 1
 
-        self.do_eval = 1
+        self.do_eval = 0
         self.eval_batch_size = 16
 
         self.do_test = 0

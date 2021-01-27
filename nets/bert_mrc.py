@@ -5,21 +5,22 @@ from transformers import BertModel
 class Bert_MRC(nn.Module):
     def __init__(self,
                  path,
+                 hidden_size,
+                 hidden_dropout_prob,
                  num_tag):  # len
         super().__init__()
         self.bert = BertModel.from_pretrained(path)
         self.num_labels = num_tag
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(hidden_dropout_prob)
 
-        self.soft_label = config.soft_label
-        self.loss_type = config.loss_type
+        # self.soft_label = config.soft_label
+        # self.loss_type = config.loss_type
 
-        self.start_fc = PoolerStartLogits(config.hidden_size, self.num_labels)
-        if self.soft_label:
-            self.end_fc = PoolerEndLogits(config.hidden_size + self.num_labels, self.num_labels)
-        else:
-            self.end_fc = PoolerEndLogits(config.hidden_size + 1, self.num_labels)
-        self.init_weights()
+        self.start_fc = nn.Linear(hidden_size, num_tag)
+        self.end_fc = nn.Linear(hidden_size, num_tag)
+        # self.span_embedding = MultiNonLinearClassifier(hidden_size * 2, 1, config.mrc_dropout)
+        self.hidden_size = hidden_size
+
 
     def forward(
             self,
@@ -30,14 +31,12 @@ class Bert_MRC(nn.Module):
             end_positions=None
     ):
         # 不在此步计算loss，因此不需要输入label
-        bert_outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask,
+        bert_outputs = self.bert(input_ids=input_ids,
+                                 attention_mask=attention_mask,
                                  token_type_ids=token_type_ids)
         logits = bert_outputs[0]
         logits = self.dropout(logits)
-
         start_logits = self.start_fc(logits)
-
-
 
         log_likelihood = self.crf(emissions=logits, tags=labels, mask=attention_mask, reduction='token_mean')
 

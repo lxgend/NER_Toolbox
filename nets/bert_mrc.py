@@ -7,6 +7,7 @@ class Bert_MRC(nn.Module):
                  path,
                  hidden_size,
                  hidden_dropout_prob,
+                 mrc_dropout,
                  num_tag):  # len
         super().__init__()
         self.bert = BertModel.from_pretrained(path)
@@ -18,9 +19,8 @@ class Bert_MRC(nn.Module):
 
         self.start_fc = nn.Linear(hidden_size, num_tag)
         self.end_fc = nn.Linear(hidden_size, num_tag)
-        # self.span_embedding = MultiNonLinearClassifier(hidden_size * 2, 1, config.mrc_dropout)
+        self.span_embedding = MultiNonLinearClassifier(hidden_size * 2, 1, mrc_dropout)
         self.hidden_size = hidden_size
-
 
     def forward(
             self,
@@ -37,14 +37,24 @@ class Bert_MRC(nn.Module):
         logits = bert_outputs[0]
         logits = self.dropout(logits)
         start_logits = self.start_fc(logits)
+        end_logits = self.end_fc(logits)
 
-        log_likelihood = self.crf(emissions=logits, tags=labels, mask=attention_mask, reduction='token_mean')
+        # start_logits = self.start_outputs(sequence_heatmap).squeeze(-1)  # [batch, seq_len, 1]
+        # end_logits = self.end_outputs(sequence_heatmap).squeeze(-1)  # [batch, seq_len, 1]
 
-        outputs = (logits,)
+        # for every position $i$ in sequence, should concate $j$ to
+        # predict if $i$ and $j$ are start_pos and end_pos for an entity.
+        # [batch, seq_len, seq_len, hidden]
+        # start_extend = sequence_heatmap.unsqueeze(2).expand(-1, -1, seq_len, -1)
+        # # [batch, seq_len, seq_len, hidden]
+        # end_extend = sequence_heatmap.unsqueeze(1).expand(-1, seq_len, -1, -1)
+        # # [batch, seq_len, seq_len, hidden*2]
+        # span_matrix = torch.cat([start_extend, end_extend], 3)
+        # # [batch, seq_len, seq_len]
+        # span_logits = self.span_embedding(span_matrix).squeeze(-1)
 
-        # negative log likelihood loss
-        outputs = (-1 * log_likelihood,) + outputs
-        return outputs  # (loss), bert_logits
+
+        return start_logits, end_logits, span_logits
 
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None, start_positions=None,end_positions=None):
@@ -94,6 +104,22 @@ class Bert_MRC(nn.Module):
             total_loss = (start_loss + end_loss) / 2
             outputs = (total_loss,) + outputs
         return outputs
+
+class MultiNonLinearClassifier(nn.Module):
+    def __init__(self, hidden_size, num_label, dropout_rate):
+        super(MultiNonLinearClassifier, self).__init__()
+        self.num_label = num_label
+        self.classifier1 = nn.Linear(hidden_size, hidden_size)
+        self.classifier2 = nn.Linear(hidden_size, num_label)
+        self.dropout = nn.Dropout(dropout_rate)
+
+    def forward(self, input_features):
+        features_output1 = self.classifier1(input_features)
+        # features_output1 = F.relu(features_output1)
+        features_output1 = F.gelu(features_output1)
+        features_output1 = self.dropout(features_output1)
+        features_output2 = self.classifier2(features_output1)
+        return features_output2
 
 
 if __name__ == '__main__':

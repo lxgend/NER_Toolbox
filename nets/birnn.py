@@ -109,26 +109,6 @@ class BiRNN_CRF(nn.Module):
         return preds
 
 
-class Config(object):
-    def __init__(self):
-        self.embedding_pretrained = None
-        self.embedding_dim = 100  # wv 维度
-        self.hidden_dim = 64
-
-        self.num_rnn_layers = 1
-        self.num_directions = 2
-        self.dropout = 0.1
-
-        self.vocab_size = 5000  # 词表大小
-
-        self.num_classes = 2  # 二分类
-        self.max_len = 64  # 单个句子的长度
-        self.lr = 1e-3
-        self.batch_size = 16
-        self.epochs = 10
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 if __name__ == '__main__':
     embed_size, num_hiddens, num_layers = 300, 100, 2
     net = BiRNN(vocab, embed_size, num_hiddens, num_layers)

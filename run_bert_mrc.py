@@ -97,7 +97,7 @@ def main(args):
     model_class, tokenizer_class, model_path = MODEL_CLASSES[args.model_type]
     tokenizer = tokenizer_class.from_pretrained(model_path)
 
-    model = Bert_MRC(path=model_path, hidden_size=768, hidden_dropout_prob=0.1, num_tag=args.num_labels)
+    model = Bert_MRC(path=model_path, hidden_size=768, hidden_dropout_prob=0.1, mrc_dropout=0.1, num_tag=args.num_labels)
     print(model)
 
     # if args.local_rank == 0:

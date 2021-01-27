@@ -6,7 +6,7 @@ CLUENER
 | ----------------    | ------------------  | ------------------------ |
 | **BERT**            | RoBERTa-wwm         |   0.60; 0.17             | 
 | **BERT-CRF**        | RoBERTa-wwm         |   0.95; 0.57             | 
-| **BiLSTM-CRF**      | random embedding    |   0.72; 0.08             |
+| **BiLSTM-CRF**      | random embedding    |   0.83; 0.13             |
 | **BERT-BiLSTM-CRF** | RoBERTa-wwm         |   0.82; 0.06             |
 
 
